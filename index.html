@@ -35,7 +35,7 @@ const run = async (fn, ...a) => {
   if (!r.ok) throw new Error(r.error);
   return r.v;
 };
-let cart = {}, pay = { on: false }, showPay = false, me = null, S = null, pin = null, month = new Date().toISOString().slice(0, 7);
+let dueDismissed = false, cart = {}, pay = { on: false }, showPay = false, me = null, S = null, pin = null, month = new Date().toISOString().slice(0, 7);
 let tok = null;
 try { tok = localStorage.getItem('tok') || null; } catch (e) {}
 
@@ -74,12 +74,20 @@ function drawLogin(email) {
   $('go').onclick = go;
   $('pn').onkeydown = e => { if (e.key === 'Enter') go(); };
 }
+function duePopup() {
+  if (!(S.prevOwed > 0) || dueDismissed) return '';
+  const months = Object.keys(S.byMonth).filter(k => k < S.month).sort().map(k => `<div class="mut">${k}: ${money(S.byMonth[k])}</div>`).join('');
+  return `<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10"><div class="card" style="max-width:420px;width:100%;margin:0;max-height:90vh;overflow:auto"><h2 style="margin-top:0">Payment due</h2><div class="big warn">${money(S.prevOwed)}</div>${months}` +
+    (pay.qr ? `<img src="${pay.qr}" alt="Payment code" style="max-width:240px;width:100%;display:block;margin:8px 0">` : '') +
+    (pay.note ? `<p>${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(S.name)}</p><div class="row"><button class="pri" id="duepaid">I've paid</button><button id="duelater">Remind me later</button></div></div></div>`;
+}
 function drawBuy() {
   const st = S.state;
   st.drinks.forEach(d => { if ((cart[d.name] || 0) > d.left) cart[d.name] = Math.max(0, d.left); if (!cart[d.name]) delete cart[d.name]; });
   let h = `<div class="card"><div class="row"><span style="flex:1">Signed in as <b>${esc(S.name)}</b></span><button id="so">Sign out</button></div></div>`;
   if (me) h += payPanel() + `<div class="card bill"><div class="mut">Balance to pay</div><div class="big ${S.owed > 0 ? 'warn' : ''}">${money(S.owed)}</div>` +
     (S.owed > 0 ? Object.keys(S.byMonth).sort().map(k => `<div class="mut">${k}: ${money(S.byMonth[k])}</div>`).join('') : '<div class="mut">All settled. Nothing to pay.</div>') +
+    (S.prevOwed > 0 ? '<div class="row"><button class="pri" id="duebtn">Pay previous balance</button></div>' : '') +
     (S.owed > 0 && pay.on ? '<div class="row"><button class="pri" id="pay">Pay now</button></div>' : '') +
     (S.pending > 0 ? `<div class="mut">${money(S.pending)} reported paid, awaiting admin confirmation</div>` : '') +
     `<div class="mut" style="margin-top:8px">This month (${S.month}): ${money(S.total)} · ${S.count} drink(s)${pay.on ? '' : ' · pay at end of month'}</div></div>`;
@@ -93,6 +101,7 @@ function drawBuy() {
   const items = st.drinks.filter(d => cart[d.name] > 0);
   if (items.length) h += '<div class="card bill" style="margin-top:12px"><b>Your selection</b>' + items.map(d => `<div class="row"><span style="flex:1">${cart[d.name]} × ${esc(d.name)}</span><span>${money(cart[d.name] * d.price)}</span></div>`).join('') +
     `<div class="row"><b style="flex:1">Total</b><b>${money(items.reduce((a, d) => a + cart[d.name] * d.price, 0))}</b></div><div class="row"><button class="pri" id="submit">Submit</button><button id="clear">Clear</button></div><div class="mut">Nothing is recorded until you press Submit. Use − to fix a mistake.</div></div>`;
+  h += duePopup();
   $('buy').innerHTML = h;
   $('so').onclick = async () => { await tryRun('signOut', tok); tok = null; me = null; try { localStorage.removeItem('tok'); } catch (x) {} drawLogin(); };
   if ($('pay')) $('pay').onclick = () => { showPay = true; drawBuy(); };
@@ -106,6 +115,9 @@ function drawBuy() {
     const r = await safe(run('logPurchases', tok, items.map(d => ({ drink: d.name, qty: cart[d.name] }))));
     if (r) { S = r; cart = {}; if (pay.on) showPay = true; drawBuy(); flash('Submitted. Thank you!'); } else loadBuy();
   };
+  if ($('duebtn')) $('duebtn').onclick = () => { dueDismissed = false; drawBuy(); };
+  if ($('duelater')) $('duelater').onclick = () => { dueDismissed = true; drawBuy(); };
+  if ($('duepaid')) $('duepaid').onclick = async () => { const r = await safe(run('markPaid', tok, 'prev')); if (r) { S = r; drawBuy(); flash('Thanks! The admin will confirm your payment.'); } };
   if ($('undo')) $('undo').onclick = async () => { const r = await safe(run('undoLast', tok)); if (r) { S = r; showPay = false; drawBuy(); flash('Last submission removed'); } else loadBuy(); };
 }
 
