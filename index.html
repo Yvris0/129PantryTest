@@ -35,7 +35,7 @@ const run = async (fn, ...a) => {
   if (!r.ok) throw new Error(r.error);
   return r.v;
 };
-let pay = { on: false }, showPay = false, me = null, S = null, pin = null, month = new Date().toISOString().slice(0, 7);
+let cart = {}, pay = { on: false }, showPay = false, me = null, S = null, pin = null, month = new Date().toISOString().slice(0, 7);
 let tok = null;
 try { tok = localStorage.getItem('tok') || null; } catch (e) {}
 
@@ -76,25 +76,37 @@ function drawLogin(email) {
 }
 function drawBuy() {
   const st = S.state;
+  st.drinks.forEach(d => { if ((cart[d.name] || 0) > d.left) cart[d.name] = Math.max(0, d.left); if (!cart[d.name]) delete cart[d.name]; });
   let h = `<div class="card"><div class="row"><span style="flex:1">Signed in as <b>${esc(S.name)}</b></span><button id="so">Sign out</button></div></div>`;
   if (me) h += payPanel() + `<div class="card bill"><div class="mut">Balance to pay</div><div class="big ${S.owed > 0 ? 'warn' : ''}">${money(S.owed)}</div>` +
     (S.owed > 0 ? Object.keys(S.byMonth).sort().map(k => `<div class="mut">${k}: ${money(S.byMonth[k])}</div>`).join('') : '<div class="mut">All settled. Nothing to pay.</div>') +
     (S.owed > 0 && pay.on ? '<div class="row"><button class="pri" id="pay">Pay now</button></div>' : '') +
     (S.pending > 0 ? `<div class="mut">${money(S.pending)} reported paid, awaiting admin confirmation</div>` : '') +
     `<div class="mut" style="margin-top:8px">This month (${S.month}): ${money(S.total)} · ${S.count} drink(s)${pay.on ? '' : ' · pay at end of month'}</div></div>`;
-  h += '<h2>Tap to log one drink</h2><div class="grid">' + st.drinks.map(d =>
-    `<button class="drink" data-d="${esc(d.name)}" ${(!me || d.left <= 0) ? 'disabled' : ''}><b>${esc(d.name)}</b><span>${money(d.price)}</span><span class="mut">${d.left > 0 ? d.left + ' left' : 'Out of stock'}</span></button>`).join('') + '</div>';
+  if (S.last && S.last.undo && Date.now() - S.last.ts < 600000)
+    h += `<div class="card"><div class="mut">Just submitted</div><div>${esc(S.last.text)} · ${money(S.last.total)}</div><div class="row"><button id="undo">Made a mistake? Undo</button></div></div>`;
+  h += '<h2>Pick your drinks</h2><div class="grid">' + st.drinks.map(d => {
+    const q = cart[d.name] || 0;
+    return `<div class="card drink" style="margin:0"><b>${esc(d.name)}</b><span>${money(d.price)}</span><span class="mut">${d.left > 0 ? d.left + ' left' : 'Out of stock'}</span><div class="row"><button data-m="${esc(d.name)}" ${q <= 0 ? 'disabled' : ''}>−</button><b>${q}</b><button data-p="${esc(d.name)}" ${q >= d.left ? 'disabled' : ''}>+</button></div></div>`;
+  }).join('') + '</div>';
   if (!st.drinks.length) h += '<p class="mut">No drinks yet. The admin needs to add some.</p>';
+  const items = st.drinks.filter(d => cart[d.name] > 0);
+  if (items.length) h += '<div class="card bill" style="margin-top:12px"><b>Your selection</b>' + items.map(d => `<div class="row"><span style="flex:1">${cart[d.name]} × ${esc(d.name)}</span><span>${money(cart[d.name] * d.price)}</span></div>`).join('') +
+    `<div class="row"><b style="flex:1">Total</b><b>${money(items.reduce((a, d) => a + cart[d.name] * d.price, 0))}</b></div><div class="row"><button class="pri" id="submit">Submit</button><button id="clear">Clear</button></div><div class="mut">Nothing is recorded until you press Submit. Use − to fix a mistake.</div></div>`;
   $('buy').innerHTML = h;
   $('so').onclick = async () => { await tryRun('signOut', tok); tok = null; me = null; try { localStorage.removeItem('tok'); } catch (x) {} drawLogin(); };
   if ($('pay')) $('pay').onclick = () => { showPay = true; drawBuy(); };
   if ($('later')) $('later').onclick = () => { showPay = false; drawBuy(); };
   if ($('paid')) $('paid').onclick = async () => { const r = await safe(run('markPaid', tok)); if (r) { S = r; showPay = false; drawBuy(); flash('Thanks! The admin will confirm your payment.'); } };
-  document.querySelectorAll('.drink').forEach(b => b.onclick = async () => {
-    b.disabled = true;
-    const r = await safe(run('logPurchase', tok, b.dataset.d));
-    if (r) { S = r; if (pay.on) showPay = true; drawBuy(); flash('Logged 1 × ' + b.dataset.d); } else loadBuy();
-  });
+  document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { cart[b.dataset.p] = (cart[b.dataset.p] || 0) + 1; drawBuy(); });
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { cart[b.dataset.m] = Math.max(0, (cart[b.dataset.m] || 0) - 1); if (!cart[b.dataset.m]) delete cart[b.dataset.m]; drawBuy(); });
+  if ($('clear')) $('clear').onclick = () => { cart = {}; drawBuy(); };
+  if ($('submit')) $('submit').onclick = async () => {
+    $('submit').disabled = true;
+    const r = await safe(run('logPurchases', tok, items.map(d => ({ drink: d.name, qty: cart[d.name] }))));
+    if (r) { S = r; cart = {}; if (pay.on) showPay = true; drawBuy(); flash('Submitted. Thank you!'); } else loadBuy();
+  };
+  if ($('undo')) $('undo').onclick = async () => { const r = await safe(run('undoLast', tok)); if (r) { S = r; showPay = false; drawBuy(); flash('Last submission removed'); } else loadBuy(); };
 }
 
 async function adminLoad() {
@@ -128,7 +140,7 @@ function drawAdmin(a) {
   $('addU').onclick = () => done(run('addUser', pin, $('un').value, $('ue').value), 'User added');
   $('mo').onchange = e => { if (e.target.value) { month = e.target.value; adminLoad(); } };
   $('sum').onclick = async () => { const u = await safe(run('createSummary', pin, month)); if (u) window.open(u, '_blank'); };
-  $('snd').onclick = async () => { if (!confirm('Email everyone their ' + month + ' total?')) return; const n = await safe(run('sendReminders', pin, month)); if (n !== undefined) flash('Sent ' + n + ' reminder(s)'); };
+  $('snd').onclick = async () => { if (!confirm('Email everyone who has an unpaid or unconfirmed balance?')) return; const n = await safe(run('sendReminders', pin, month)); if (n !== undefined) flash('Sent ' + n + ' reminder(s)'); };
 }
 loadBuy();
 </script></body></html>
