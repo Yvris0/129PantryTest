@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Drinks Tab</title>
+<style>
+:root{--bg:#fafaf7;--fg:#1d1d1b;--mut:#6b6b66;--card:#fff;--bd:#e3e3dc;--ac:#0f6e56;--acf:#fff;--warn:#b3261e;color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root{--bg:#171716;--fg:#ecece6;--mut:#9a9a92;--card:#222221;--bd:#3a3a37;--ac:#4fbf9f;--acf:#10231d;--warn:#ff8a80}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,sans-serif}
+main{max-width:720px;margin:0 auto;padding:16px}h1{font-size:20px;margin:0 0 12px}h2{font-size:16px;margin:20px 0 8px}
+button,input,select{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:9px 14px;cursor:pointer}
+button.on,button.pri{background:var(--ac);color:var(--acf);border-color:var(--ac)}button:disabled{opacity:.45;cursor:not-allowed}
+input,select{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:9px 10px;min-width:0}
+nav{display:flex;gap:6px;margin-bottom:14px}.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.bill{border-color:var(--ac)}.big{font-size:28px;font-weight:650}.mut{color:var(--mut);font-size:14px}.warn{color:var(--warn)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.drink{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px;text-align:left}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd);white-space:nowrap}td.n,th.n{text-align:right}
+</style></head>
+<body><main><h1>Drinks Tab</h1>
+<nav><button id="t-buy" class="on">Log a drink</button><button id="t-adm">Admin</button></nav>
+<div id="buy"></div><div id="adm" hidden></div><p id="msg" class="mut"></p></main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = n => '$' + Number(n).toFixed(2);
+const API_URL = 'https://script.google.com/macros/s/AKfycbzHQ8F1B7tAg0NLOELdpCqrUyzkCS6wKvcHKSjx0bWoezq02HAIBmMLaJj6xyxC2yT7/exec';   // the Web app URL ending in /exec
+const run = async (fn, ...a) => {
+  if (API_URL.indexOf('PASTE') === 0) throw new Error('Set API_URL at the top of the script in index.html');
+  let r;
+  try {
+    r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: a }) });
+    r = await r.json();
+  } catch (e) { throw new Error('Cannot reach the server. Check your connection.'); }
+  if (!r.ok) throw new Error(r.error);
+  return r.v;
+};
+let pay = { on: false }, showPay = false, me = null, S = null, pin = null, month = new Date().toISOString().slice(0, 7);
+let tok = null;
+try { tok = localStorage.getItem('tok') || null; } catch (e) {}
+
+function flash(t) { $('msg').textContent = t; clearTimeout(flash.t); flash.t = setTimeout(() => $('msg').textContent = '', 3000); }
+async function tryRun(fn, ...a) { try { return { ok: true, v: await run(fn, ...a) }; } catch (e) { flash(e && e.message ? e.message.replace(/^Error:\s*/, '') : 'Something went wrong'); return { ok: false }; } }
+async function safe(p) { try { return await p; } catch (e) { flash(e && e.message ? e.message.replace(/^Error:\s*/, '') : 'Something went wrong'); } }
+
+function showTab(t) {
+  $('buy').hidden = t !== 'buy'; $('adm').hidden = t !== 'adm';
+  $('t-buy').className = t === 'buy' ? 'on' : ''; $('t-adm').className = t === 'adm' ? 'on' : '';
+  if (t === 'adm') adminLoad();
+}
+$('t-buy').onclick = () => showTab('buy');
+$('t-adm').onclick = () => showTab('adm');
+
+async function loadBuy() {
+  if (!pay.checked) { const p = await safe(run('payInfo')); if (p) { pay = p; pay.checked = true; } }
+  if (!tok) { drawLogin(); return; }
+  const t = await tryRun('myState', tok);
+  if (t.ok) { S = t.v; me = S.name; drawBuy(); }
+  else { tok = null; try { localStorage.removeItem('tok'); } catch (x) {} drawLogin(); }
+}
+function payPanel() {
+  if (!showPay || !(S.owed > 0)) return '';
+  return `<div class="card bill"><h2 style="margin-top:0">Pay ${money(S.owed)}</h2>` +
+    (pay.qr ? `<img src="${pay.qr}" alt="Payment code" style="max-width:240px;width:100%;display:block;margin:8px 0">` : '') +
+    (pay.note ? `<p>${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(me)}</p>` +
+    '<div class="row"><button class="pri" id="paid">I\'ve paid</button><button id="later">Pay later</button></div></div>';
+}
+function drawLogin(email) {
+  $('buy').innerHTML = `<div class="card"><h2 style="margin-top:0">Sign in</h2><div class="row"><input id="em" type="email" placeholder="Email" value="${esc(email || '')}"></div><div class="row"><input id="pn" type="password" inputmode="numeric" maxlength="6" placeholder="PIN (4-6 digits)"></div><div class="row"><input id="nm" placeholder="Name (first time only)"></div><div class="row"><button class="pri" id="go">Sign in</button></div><p class="mut">First time? Add your name and choose a PIN. Forgot your PIN? Ask the admin to reset it.</p></div>`;
+  const go = async () => {
+    const r = await tryRun('signIn', $('em').value.trim(), $('pn').value, $('nm').value);
+    if (r.ok) { tok = r.v; try { localStorage.setItem('tok', tok); } catch (x) {} loadBuy(); }
+  };
+  $('go').onclick = go;
+  $('pn').onkeydown = e => { if (e.key === 'Enter') go(); };
+}
+function drawBuy() {
+  const st = S.state;
+  let h = `<div class="card"><div class="row"><span style="flex:1">Signed in as <b>${esc(S.name)}</b></span><button id="so">Sign out</button></div></div>`;
+  if (me) h += payPanel() + `<div class="card bill"><div class="mut">Balance to pay</div><div class="big ${S.owed > 0 ? 'warn' : ''}">${money(S.owed)}</div>` +
+    (S.owed > 0 ? Object.keys(S.byMonth).sort().map(k => `<div class="mut">${k}: ${money(S.byMonth[k])}</div>`).join('') : '<div class="mut">All settled. Nothing to pay.</div>') +
+    (S.owed > 0 && pay.on ? '<div class="row"><button class="pri" id="pay">Pay now</button></div>' : '') +
+    (S.pending > 0 ? `<div class="mut">${money(S.pending)} reported paid, awaiting admin confirmation</div>` : '') +
+    `<div class="mut" style="margin-top:8px">This month (${S.month}): ${money(S.total)} · ${S.count} drink(s)${pay.on ? '' : ' · pay at end of month'}</div></div>`;
+  h += '<h2>Tap to log one drink</h2><div class="grid">' + st.drinks.map(d =>
+    `<button class="drink" data-d="${esc(d.name)}" ${(!me || d.left <= 0) ? 'disabled' : ''}><b>${esc(d.name)}</b><span>${money(d.price)}</span><span class="mut">${d.left > 0 ? d.left + ' left' : 'Out of stock'}</span></button>`).join('') + '</div>';
+  if (!st.drinks.length) h += '<p class="mut">No drinks yet. The admin needs to add some.</p>';
+  $('buy').innerHTML = h;
+  $('so').onclick = async () => { await tryRun('signOut', tok); tok = null; me = null; try { localStorage.removeItem('tok'); } catch (x) {} drawLogin(); };
+  if ($('pay')) $('pay').onclick = () => { showPay = true; drawBuy(); };
+  if ($('later')) $('later').onclick = () => { showPay = false; drawBuy(); };
+  if ($('paid')) $('paid').onclick = async () => { const r = await safe(run('markPaid', tok)); if (r) { S = r; showPay = false; drawBuy(); flash('Thanks! The admin will confirm your payment.'); } };
+  document.querySelectorAll('.drink').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    const r = await safe(run('logPurchase', tok, b.dataset.d));
+    if (r) { S = r; if (pay.on) showPay = true; drawBuy(); flash('Logged 1 × ' + b.dataset.d); } else loadBuy();
+  });
+}
+
+async function adminLoad() {
+  if (!pin) { pin = prompt('Admin PIN'); if (!pin) { showTab('buy'); return; } }
+  const r = await safe(run('adminState', pin, month));
+  if (!r) { pin = null; showTab('buy'); return; }
+  drawAdmin(r);
+}
+function drawAdmin(a) {
+  const lowList = a.drinks.filter(d => d.left <= a.low);
+  let h = (lowList.length ? '<div class="card bill"><b class="warn">Low stock</b><div>' + lowList.map(d => esc(d.name) + (d.left <= 0 ? ' (out)' : ' (' + d.left + ' left)')).join(', ') + '</div></div>' : '') + '<h2>Stock</h2><div class="card scroll"><table><tr><th>Drink</th><th class="n">Price</th><th class="n">Topped up</th><th class="n">Sold</th><th class="n">Left</th><th>Top up</th></tr>' +
+    a.drinks.map((d, i) => `<tr><td>${esc(d.name)}</td><td class="n"><input id="pr${i}" type="number" step="0.05" min="0" value="${d.price}" style="width:75px"> <button data-pr="${i}">Set</button></td><td class="n">${d.topped}</td><td class="n">${d.sold}</td><td class="n ${d.left <= a.low ? 'warn' : ''}">${d.left}</td><td><input id="tu${i}" type="number" min="1" style="width:70px"> <button data-tu="${i}">Add</button></td></tr>`).join('') + '</table></div>' +
+    '<h2>Add a drink</h2><div class="card"><div class="row"><input id="dn" placeholder="Name (e.g. Coke)"><input id="dp" type="number" step="0.05" min="0" placeholder="Price" style="width:90px"><input id="dq" type="number" min="0" placeholder="Qty" style="width:80px"><button class="pri" id="addD">Add</button></div></div>' +
+    '<h2>Add a user</h2><div class="card"><div class="row"><input id="un" placeholder="Name"><input id="ue" type="email" placeholder="Email (required)"><button class="pri" id="addU">Add</button></div><div class="mut">' + a.users.map((u, i) => `<div class="row"><span style="flex:1">${esc(u.name)} ${u.email ? `<span class="mut">${esc(u.email)}</span>` : `<input id="ue${i}" type="email" placeholder="Add email" style="width:180px"> <button data-se="${i}">Set</button>`}</span><button data-rp="${i}">Reset PIN</button> <button data-ru="${i}">Remove</button></div>`).join('') + '</div></div>' +
+    '<h2>Billing</h2><div class="row"><label>Month</label><input type="month" id="mo" value="' + month + '"></div><div class="card scroll"><table><tr><th>User</th><th class="n">Drinks</th><th class="n">Total</th><th class="n">Unpaid</th><th class="n">Reported</th><th class="n">Paid</th><th></th></tr>' +
+    a.summary.map((u, i) => `<tr><td>${esc(u.name)}</td><td class="n">${u.count}</td><td class="n">${money(u.total)}</td><td class="n ${u.owed > 0 ? 'warn' : ''}">${money(u.owed)}</td><td class="n">${money(u.pending)}</td><td class="n">${money(u.paid)}</td><td>${(u.owed + u.pending) > 0 ? `<button data-cp="${i}">Mark paid</button>` : ''}</td></tr>`).join('') +
+    `<tr><th>All</th><th class="n">${a.summary.reduce((x, u) => x + u.count, 0)}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.total, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.owed, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.pending, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.paid, 0))}</th><th></th></tr></table></div>` +
+    '<div class="row"><button class="pri" id="sum">Create summary sheet</button><button id="snd">Email reminders now</button></div>' +
+    '<p class="mut">Reminders also go out automatically on the last day of each month.</p>' +
+    '<h2>Alert emails</h2><div class="card"><div class="row"><input id="ae" style="flex:1" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>';
+  $('adm').innerHTML = h;
+  const done = async (p, m) => { const r = await safe(p); if (r !== undefined || m) { if (m) flash(m); } adminLoad(); };
+  document.querySelectorAll('[data-tu]').forEach(b => b.onclick = () => done(run('topUp', pin, a.drinks[b.dataset.tu].name, $('tu' + b.dataset.tu).value), 'Stock updated'));
+  document.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => done(run('setPrice', pin, a.drinks[b.dataset.pr].name, parseFloat($('pr' + b.dataset.pr).value)), 'Price updated (applies to new purchases)'));
+  document.querySelectorAll('[data-ru]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.ru]; if (confirm('Remove ' + u.name + '? Past purchases stay on record.')) done(run('removeUser', pin, u.name), 'User removed'); });
+  document.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const u = a.summary[b.dataset.cp]; if (confirm('Mark all of ' + u.name + "'s " + month + ' drinks as paid?')) done(run('confirmPaid', pin, u.name, month), 'Marked as paid'); });
+  document.querySelectorAll('[data-se]').forEach(b => b.onclick = () => done(run('setEmail', pin, a.users[b.dataset.se].name, $('ue' + b.dataset.se).value), 'Email saved'));
+  document.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.rp]; if (confirm('Reset the PIN for ' + u.name + '? They will choose a new one at next sign-in.')) done(run('resetPin', pin, u.name), 'PIN reset'); });
+  $('saveAE').onclick = () => done(run('setAdminEmails', pin, $('ae').value), 'Alert emails saved');
+  $('addD').onclick = () => done(run('addDrink', pin, $('dn').value, parseFloat($('dp').value), $('dq').value), 'Drink added');
+  $('addU').onclick = () => done(run('addUser', pin, $('un').value, $('ue').value), 'User added');
+  $('mo').onchange = e => { if (e.target.value) { month = e.target.value; adminLoad(); } };
+  $('sum').onclick = async () => { const u = await safe(run('createSummary', pin, month)); if (u) window.open(u, '_blank'); };
+  $('snd').onclick = async () => { if (!confirm('Email everyone their ' + month + ' total?')) return; const n = await safe(run('sendReminders', pin, month)); if (n !== undefined) flash('Sent ' + n + ' reminder(s)'); };
+}
+loadBuy();
+</script></body></html>
