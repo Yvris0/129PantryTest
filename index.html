@@ -24,7 +24,7 @@ th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd);white-sp
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const money = n => '$' + Number(n).toFixed(2);
-const API_URL = 'PASTE_YOUR_EXEC_URL_HERE';   // the Web app URL ending in /exec
+const API_URL = 'https://script.google.com/macros/s/AKfycbzHQ8F1B7tAg0NLOELdpCqrUyzkCS6wKvcHKSjx0bWoezq02HAIBmMLaJj6xyxC2yT7/exec';   // the Web app URL ending in /exec
 const run = async (fn, ...a) => {
   if (API_URL.indexOf('PASTE') === 0) throw new Error('Set API_URL at the top of the script in index.html');
   let r;
