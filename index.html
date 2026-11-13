@@ -16,6 +16,180 @@ nav{display:flex;gap:6px;margin-bottom:14px}.card{background:var(--card);border:
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
 .scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}
 th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd);white-space:nowrap}td.n,th.n{text-align:right}
+
+/* Responsive layout improvements */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  min-width: 320px;
+  overflow-x: hidden;
+}
+main {
+  width: 100%;
+}
+button, input, select {
+  min-height: 42px;
+}
+button {
+  touch-action: manipulation;
+}
+input, select {
+  max-width: 100%;
+}
+nav button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+}
+.scroll {
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.scroll table {
+  min-width: max-content;
+}
+.card {
+  min-width: 0;
+}
+.row > input,
+.row > select {
+  min-width: 0;
+}
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 600px) {
+  main {
+    padding: 12px;
+  }
+  h1 {
+    font-size: 21px;
+    margin-bottom: 14px;
+  }
+  h2 {
+    margin-top: 18px;
+  }
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 8px 0;
+    margin: -4px 0 10px;
+    background: var(--bg);
+  }
+  nav button {
+    padding: 11px 10px;
+  }
+  .card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .drink {
+    padding: 12px 10px;
+    gap: 5px;
+  }
+  .drink .row {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    margin-top: 7px;
+  }
+  .drink .row button {
+    flex: 1;
+    min-width: 42px;
+    padding: 8px 10px;
+    font-size: 18px;
+  }
+  .row {
+    gap: 8px;
+  }
+  .row > input,
+  .row > select {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .row > button {
+    flex: 1 1 auto;
+  }
+  .big {
+    font-size: 25px;
+  }
+  .scroll {
+    margin-left: -2px;
+    margin-right: -2px;
+    width: calc(100% + 4px);
+  }
+  .scroll table {
+    font-size: 13px;
+  }
+  th, td {
+    padding: 9px 7px;
+  }
+  /* Keep the account controls usable without forcing a single long row. */
+  #buy > .card:first-child .row {
+    align-items: stretch;
+  }
+  #buy > .card:first-child .row > span {
+    flex-basis: 100%;
+  }
+  #buy > .card:first-child .row > button {
+    flex: 1 1 calc(50% - 4px);
+  }
+  /* Admin forms wrap cleanly on narrow screens. */
+  #adm .row {
+    flex-wrap: wrap;
+  }
+  #adm .row > input,
+  #adm .row > select {
+    flex: 1 1 100%;
+    width: 100% !important;
+  }
+  #adm .row > button {
+    flex: 1 1 auto;
+  }
+  #adm .scroll {
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  main {
+    padding: 10px;
+  }
+  .grid {
+    gap: 7px;
+  }
+  .drink {
+    padding: 10px 8px;
+  }
+  .drink b {
+    overflow-wrap: anywhere;
+  }
+  .card {
+    padding: 10px;
+  }
+  .big {
+    font-size: 23px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button {
+    transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
+  }
+}
+
 </style></head>
 <body><main><h1>Drinks Tab</h1>
 <nav><button id="t-buy" class="on">Log a drink</button><button id="t-adm">Admin</button></nav>
@@ -39,7 +213,7 @@ let hist = null, atgUrl = null, tgUrl = null, dueDismissed = false, cart = {}, p
 let tok = null;
 try { tok = localStorage.getItem('tok') || null; } catch (e) {}
 
-function flash(t) { $('msg').textContent = t; clearTimeout(flash.t); flash.t = setTimeout(() => $('msg').textContent = '', 3000); }
+function flash(t, ms) { $('msg').textContent = t; clearTimeout(flash.t); flash.t = setTimeout(() => $('msg').textContent = '', ms || 3000); }
 async function tryRun(fn, ...a) { try { return { ok: true, v: await run(fn, ...a) }; } catch (e) { flash(e && e.message ? e.message.replace(/^Error:\s*/, '') : 'Something went wrong'); return { ok: false }; } }
 async function safe(p) { try { return await p; } catch (e) { flash(e && e.message ? e.message.replace(/^Error:\s*/, '') : 'Something went wrong'); } }
 
@@ -62,25 +236,25 @@ function payPanel() {
   if (!showPay || !(S.owed > 0)) return '';
   return `<div class="card bill"><h2 style="margin-top:0">Pay ${money(S.owed)}</h2>` +
     (pay.qr ? `<img src="${pay.qr}" alt="Payment code" style="max-width:240px;width:100%;display:block;margin:8px 0">` : '') +
-    (pay.note ? `<p>${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(me)}</p>` +
+    (pay.note ? `<p style="white-space:pre-line">${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(me)}</p>` +
     '<div class="row"><button class="pri" id="paid">I\'ve paid</button><button id="later">Pay later</button></div></div>';
 }
 function drawLogin(email) {
-  $('buy').innerHTML = `<div class="card"><h2 style="margin-top:0">Sign in</h2><div class="row"><input id="em" type="email" placeholder="Email" value="${esc(email || '')}"></div><div class="row"><input id="pn" type="password" inputmode="numeric" maxlength="6" placeholder="PIN (4-6 digits)"></div><div class="row"><input id="nm" placeholder="Name (first time only)"></div><div class="row"><button class="pri" id="go">Sign in</button></div><p class="mut">First time? Add your name and choose a PIN. Forgot your PIN? Ask the admin to reset it.</p></div>`;
+  $('buy').innerHTML = `<div class="card"><h2 style="margin-top:0">Sign in</h2><div class="row"><input id="em" type="email" placeholder="Email" value="${esc(email || '')}"></div><div class="row"><input id="pn" type="password" inputmode="numeric" maxlength="6" placeholder="PIN (4-6 digits)"><button type="button" id="pnt">Show</button></div><div class="row"><input id="nm" placeholder="Name (first time only)"></div><div class="row"><button class="pri" id="go">Sign in</button></div><p class="mut">First time? Add your name and choose a PIN. Forgot your PIN? Ask the admin to reset it.</p></div>`;
   const go = async () => {
     const r = await tryRun('signIn', $('em').value.trim(), $('pn').value, $('nm').value);
     if (r.ok) { tok = r.v; try { localStorage.setItem('tok', tok); } catch (x) {} loadBuy(); }
   };
   $('go').onclick = go;
+  $('pnt').onclick = () => { const i = $('pn'), show = i.type === 'password'; i.type = show ? 'text' : 'password'; $('pnt').textContent = show ? 'Hide' : 'Show'; i.focus(); };
   $('pn').onkeydown = e => { if (e.key === 'Enter') go(); };
 }
 const sigOf = () => `${S.owed}|${S.pending}|${S.count}|${S.total}`;
+const histOpen = () => hist && hist.user === S.name && hist.sig === sigOf();
 function histCard() {
-  const ok = hist && hist.user === S.name && hist.sig === sigOf();
-  let h = `<div class="row" style="margin-top:12px"><button id="hist">${ok ? 'Hide my history' : 'My history'}</button></div>`;
-  if (ok) h += `<div class="card scroll"><div class="mut">Paid ${money(hist.paid)} · Reported ${money(hist.pending)} · Unpaid ${money(hist.owed)}</div><table><tr><th>Date</th><th>Items</th><th class="n">Total</th><th>Status</th></tr>` +
+  if (!histOpen()) return '';
+  return `<div class="card scroll"><div class="mut">Paid ${money(hist.paid)} · Reported ${money(hist.pending)} · Unpaid ${money(hist.owed)}</div><table><tr><th>Date</th><th>Items</th><th class="n">Total</th><th>Status</th></tr>` +
     (hist.list.map(g => `<tr><td>${new Date(g.ts).toLocaleDateString()}</td><td style="white-space:normal">${esc(g.text)}</td><td class="n">${money(g.total)}</td><td>${({ '': 'Unpaid', R: 'Reported', Y: 'Paid' })[g.st]}</td></tr>`).join('') || '<tr><td colspan="4" class="mut">Nothing yet</td></tr>') + '</table></div>';
-  return h;
 }
 function remindCard() {
   const p = S.prefs;
@@ -105,12 +279,12 @@ function duePopup() {
   const months = Object.keys(S.byMonth).filter(k => k < S.month).sort().map(k => `<div class="mut">${k}: ${money(S.byMonth[k])}</div>`).join('');
   return `<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10"><div class="card" style="max-width:420px;width:100%;margin:0;max-height:90vh;overflow:auto"><h2 style="margin-top:0">Payment due</h2><div class="big warn">${money(S.prevOwed)}</div>${months}` +
     (pay.qr ? `<img src="${pay.qr}" alt="Payment code" style="max-width:240px;width:100%;display:block;margin:8px 0">` : '') +
-    (pay.note ? `<p>${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(S.name)}</p><div class="row"><button class="pri" id="duepaid">I've paid</button><button id="duelater">Remind me later</button></div></div></div>`;
+    (pay.note ? `<p style="white-space:pre-line">${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(S.name)}</p><div class="row"><button class="pri" id="duepaid">I've paid</button><button id="duelater">Remind me later</button></div></div></div>`;
 }
 function drawBuy() {
   const st = S.state;
   st.drinks.forEach(d => { if ((cart[d.name] || 0) > d.left) cart[d.name] = Math.max(0, d.left); if (!cart[d.name]) delete cart[d.name]; });
-  let h = `<div class="card"><div class="row"><span style="flex:1">Signed in as <b>${esc(S.name)}</b></span><button id="so">Sign out</button></div></div>`;
+  let h = `<div class="card"><div class="row"><span style="flex:1">Signed in as <b>${esc(S.name)}</b></span><button id="hist">${histOpen() ? 'Hide history' : 'My history'}</button><button id="so">Sign out</button></div></div>`;
   if (me) h += payPanel() + `<div class="card bill"><div class="mut">Balance to pay</div><div class="big ${S.owed > 0 ? 'warn' : ''}">${money(S.owed)}</div>` +
     (S.owed > 0 ? Object.keys(S.byMonth).sort().map(k => `<div class="mut">${k}: ${money(S.byMonth[k])}</div>`).join('') : '<div class="mut">All settled. Nothing to pay.</div>') +
     (S.prevOwed > 0 ? '<div class="row"><button class="pri" id="duebtn">Pay previous balance</button></div>' : '') +
@@ -119,7 +293,8 @@ function drawBuy() {
     `<div class="mut" style="margin-top:8px">This month (${S.month}): ${money(S.total)} · ${S.count} drink(s)${pay.on ? '' : ' · pay at end of month'}</div></div>`;
   if (S.last && S.last.undo && Date.now() - S.last.ts < 600000)
     h += `<div class="card"><div class="mut">Just submitted</div><div>${esc(S.last.text)} · ${money(S.last.total)}</div><div class="row"><button id="undo">Made a mistake? Undo</button></div></div>`;
-  h += '<h2>Pick your drinks</h2><div class="grid">' + st.drinks.map(d => {
+  h += histCard();
+  h += '<h2>Pick your drinks' + (S.last ? ' <span class="mut" style="font-weight:400">· your most ordered first</span>' : '') + '</h2><div class="grid">' + st.drinks.map(d => {
     const q = cart[d.name] || 0;
     return `<div class="card drink" style="margin:0"><b>${esc(d.name)}</b><span>${money(d.price)}</span><span class="mut">${d.left > 0 ? d.left + ' left' : 'Out of stock'}</span><div class="row"><button data-m="${esc(d.name)}" ${q <= 0 ? 'disabled' : ''}>−</button><b>${q}</b><button data-p="${esc(d.name)}" ${q >= d.left ? 'disabled' : ''}>+</button></div></div>`;
   }).join('') + '</div>';
@@ -127,7 +302,6 @@ function drawBuy() {
   const items = st.drinks.filter(d => cart[d.name] > 0);
   if (items.length) h += '<div class="card bill" style="margin-top:12px"><b>Your selection</b>' + items.map(d => `<div class="row"><span style="flex:1">${cart[d.name]} × ${esc(d.name)}</span><span>${money(cart[d.name] * d.price)}</span></div>`).join('') +
     `<div class="row"><b style="flex:1">Total</b><b>${money(items.reduce((a, d) => a + cart[d.name] * d.price, 0))}</b></div><div class="row"><button class="pri" id="submit">Submit</button><button id="clear">Clear</button></div><div class="mut">Nothing is recorded until you press Submit. Use − to fix a mistake.</div></div>`;
-  h += histCard();
   h += remindCard();
   h += duePopup();
   $('buy').innerHTML = h;
@@ -157,6 +331,10 @@ function drawBuy() {
   if ($('undo')) $('undo').onclick = async () => { const r = await safe(run('undoLast', tok)); if (r) { S = r; showPay = false; drawBuy(); flash('Last submission removed'); } else loadBuy(); };
 }
 
+function payCard(a) {
+  const p = a.pay;
+  return `<h2>Payment details</h2><div class="card"><div class="row"><input id="pyn" placeholder="Payee name" value="${esc(p.name)}" style="flex:1"></div><div class="row"><input id="pyu" placeholder="Number (phone or account)" value="${esc(p.number)}" style="flex:1"></div><div class="row"><input id="pyx" placeholder="Extra note (optional)" value="${esc(p.note)}" style="flex:1"></div><div class="row"><button class="pri" id="paysave">Save</button></div><div class="mut">Shown in the payment pop-up and in reminders. Leave all three blank to use the default text in the code.</div></div>`;
+}
 function tgAdminCard(a) {
   let h = '<h2>Telegram</h2><div class="card">';
   if (!a.tgBot) h += '<div class="mut">Create a bot with @BotFather on Telegram, then paste its token here.</div><div class="row"><input id="tgtok" type="password" placeholder="Bot token" style="flex:1"><button class="pri" id="tgsave">Connect bot</button></div>';
@@ -200,9 +378,9 @@ function drawAdmin(a) {
     `<tr><th>All</th><th class="n">${a.summary.reduce((x, u) => x + u.count, 0)}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.total, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.owed, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.pending, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.paid, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.allOwed, 0))}</th><th></th></tr></table></div>` +
     '<div class="row"><button class="pri" id="sum">Create summary sheet</button><button id="snd">Email reminders now</button></div>' +
     '<p class="mut">Reminders also go out automatically on the last day of each month.</p>' +
-    '<h2>Alert emails</h2><div class="card"><div class="row"><input id="ae" style="flex:1" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>' + tgAdminCard(a);
+    '<h2>Alert emails</h2><div class="card"><div class="row"><input id="ae" style="flex:1" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>' + payCard(a) + tgAdminCard(a);
   $('adm').innerHTML = h;
-  const done = async (p, m) => { const r = await safe(p); if (r !== undefined || m) { if (m) flash(m); } adminLoad(); };
+  const done = async (p, m) => { await safe(p); const err = safe.err; if (!err && m) flash(m); await adminLoad(); if (err) flash(err.replace(/^Error:\s*/, ''), 10000); };
   document.querySelectorAll('[data-tu]').forEach(b => b.onclick = () => done(run('topUp', pin, a.drinks[b.dataset.tu].name, $('tu' + b.dataset.tu).value), 'Stock updated'));
   document.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => done(run('setPrice', pin, a.drinks[b.dataset.pr].name, parseFloat($('pr' + b.dataset.pr).value)), 'Price updated (applies to new purchases)'));
   document.querySelectorAll('[data-ru]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.ru]; if (confirm('Remove ' + u.name + '? Past purchases stay on record.')) done(run('removeUser', pin, u.name), 'User removed'); });
@@ -212,6 +390,7 @@ function drawAdmin(a) {
   document.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const u = a.summary[b.dataset.cp]; if (confirm('Mark all of ' + u.name + "'s " + month + ' drinks as paid?')) done(run('confirmPaid', pin, u.name, month), 'Marked as paid'); });
   document.querySelectorAll('[data-se]').forEach(b => b.onclick = () => done(run('setEmail', pin, a.users[b.dataset.se].name, $('ue' + b.dataset.se).value), 'Email saved'));
   document.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.rp]; if (confirm('Reset the PIN for ' + u.name + '? They will choose a new one at next sign-in.')) done(run('resetPin', pin, u.name), 'PIN reset'); });
+  if ($('paysave')) $('paysave').onclick = () => done(run('setPayment', pin, $('pyn').value, $('pyu').value, $('pyx').value), 'Payment details saved');
   if ($('tgsave')) $('tgsave').onclick = () => done(run('setTelegram', pin, $('tgtok').value), 'Telegram bot connected');
   if ($('tgrm')) $('tgrm').onclick = () => { if (confirm('Remove the Telegram bot? Users will fall back to email.')) done(run('setTelegram', pin, ''), 'Telegram bot removed'); };
   if ($('atgc')) $('atgc').onclick = async () => { const l = await safe(run('adminTgLink', pin)); if (l) { atgUrl = l.url; drawAdmin(a); pollAdminTg(a.adminTg); } };
