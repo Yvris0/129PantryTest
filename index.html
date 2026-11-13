@@ -39,7 +39,7 @@ let hist = null, atgUrl = null, tgUrl = null, dueDismissed = false, cart = {}, p
 let tok = null;
 try { tok = localStorage.getItem('tok') || null; } catch (e) {}
 
-function flash(t) { $('msg').textContent = t; clearTimeout(flash.t); flash.t = setTimeout(() => $('msg').textContent = '', 3000); }
+function flash(t, ms) { $('msg').textContent = t; clearTimeout(flash.t); flash.t = setTimeout(() => $('msg').textContent = '', ms || 3000); }
 async function tryRun(fn, ...a) { try { return { ok: true, v: await run(fn, ...a) }; } catch (e) { flash(e && e.message ? e.message.replace(/^Error:\s*/, '') : 'Something went wrong'); return { ok: false }; } }
 async function safe(p) { try { return await p; } catch (e) { flash(e && e.message ? e.message.replace(/^Error:\s*/, '') : 'Something went wrong'); } }
 
@@ -202,7 +202,7 @@ function drawAdmin(a) {
     '<p class="mut">Reminders also go out automatically on the last day of each month.</p>' +
     '<h2>Alert emails</h2><div class="card"><div class="row"><input id="ae" style="flex:1" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>' + tgAdminCard(a);
   $('adm').innerHTML = h;
-  const done = async (p, m) => { const r = await safe(p); if (r !== undefined || m) { if (m) flash(m); } adminLoad(); };
+  const done = async (p, m) => { await safe(p); const err = safe.err; if (!err && m) flash(m); await adminLoad(); if (err) flash(err.replace(/^Error:\s*/, ''), 10000); };
   document.querySelectorAll('[data-tu]').forEach(b => b.onclick = () => done(run('topUp', pin, a.drinks[b.dataset.tu].name, $('tu' + b.dataset.tu).value), 'Stock updated'));
   document.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => done(run('setPrice', pin, a.drinks[b.dataset.pr].name, parseFloat($('pr' + b.dataset.pr).value)), 'Price updated (applies to new purchases)'));
   document.querySelectorAll('[data-ru]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.ru]; if (confirm('Remove ' + u.name + '? Past purchases stay on record.')) done(run('removeUser', pin, u.name), 'User removed'); });
