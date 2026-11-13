@@ -17,8 +17,8 @@ nav{display:flex;gap:6px;margin-bottom:14px}.card{background:var(--card);border:
 .scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}
 th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd);white-space:nowrap}td.n,th.n{text-align:right}
 </style></head>
-<body><main><h1>Drinks Tab</h1>
-<nav><button id="t-buy" class="on">Log a drink</button><button id="t-adm">Admin</button></nav>
+<body><main><h1>129 Pantry</h1>
+<nav><button id="t-buy" class="on">Log a purchase</button><button id="t-adm">Admin</button></nav>
 <div id="buy"></div><div id="adm" hidden></div><p id="msg" class="mut"></p></main>
 <script>
 const $ = id => document.getElementById(id);
@@ -76,12 +76,11 @@ function drawLogin(email) {
   $('pn').onkeydown = e => { if (e.key === 'Enter') go(); };
 }
 const sigOf = () => `${S.owed}|${S.pending}|${S.count}|${S.total}`;
+const histOpen = () => hist && hist.user === S.name && hist.sig === sigOf();
 function histCard() {
-  const ok = hist && hist.user === S.name && hist.sig === sigOf();
-  let h = `<div class="row" style="margin-top:12px"><button id="hist">${ok ? 'Hide my history' : 'My history'}</button></div>`;
-  if (ok) h += `<div class="card scroll"><div class="mut">Paid ${money(hist.paid)} · Reported ${money(hist.pending)} · Unpaid ${money(hist.owed)}</div><table><tr><th>Date</th><th>Items</th><th class="n">Total</th><th>Status</th></tr>` +
+  if (!histOpen()) return '';
+  return `<div class="card scroll"><div class="mut">Paid ${money(hist.paid)} · Reported ${money(hist.pending)} · Unpaid ${money(hist.owed)}</div><table><tr><th>Date</th><th>Items</th><th class="n">Total</th><th>Status</th></tr>` +
     (hist.list.map(g => `<tr><td>${new Date(g.ts).toLocaleDateString()}</td><td style="white-space:normal">${esc(g.text)}</td><td class="n">${money(g.total)}</td><td>${({ '': 'Unpaid', R: 'Reported', Y: 'Paid' })[g.st]}</td></tr>`).join('') || '<tr><td colspan="4" class="mut">Nothing yet</td></tr>') + '</table></div>';
-  return h;
 }
 function remindCard() {
   const p = S.prefs;
@@ -111,7 +110,7 @@ function duePopup() {
 function drawBuy() {
   const st = S.state;
   st.drinks.forEach(d => { if ((cart[d.name] || 0) > d.left) cart[d.name] = Math.max(0, d.left); if (!cart[d.name]) delete cart[d.name]; });
-  let h = `<div class="card"><div class="row"><span style="flex:1">Signed in as <b>${esc(S.name)}</b></span><button id="so">Sign out</button></div></div>`;
+  let h = `<div class="card"><div class="row"><span style="flex:1">Signed in as <b>${esc(S.name)}</b></span><button id="hist">${histOpen() ? 'Hide history' : 'My history'}</button><button id="so">Sign out</button></div></div>`;
   if (me) h += payPanel() + `<div class="card bill"><div class="mut">Balance to pay</div><div class="big ${S.owed > 0 ? 'warn' : ''}">${money(S.owed)}</div>` +
     (S.owed > 0 ? Object.keys(S.byMonth).sort().map(k => `<div class="mut">${k}: ${money(S.byMonth[k])}</div>`).join('') : '<div class="mut">All settled. Nothing to pay.</div>') +
     (S.prevOwed > 0 ? '<div class="row"><button class="pri" id="duebtn">Pay previous balance</button></div>' : '') +
@@ -120,7 +119,8 @@ function drawBuy() {
     `<div class="mut" style="margin-top:8px">This month (${S.month}): ${money(S.total)} · ${S.count} drink(s)${pay.on ? '' : ' · pay at end of month'}</div></div>`;
   if (S.last && S.last.undo && Date.now() - S.last.ts < 600000)
     h += `<div class="card"><div class="mut">Just submitted</div><div>${esc(S.last.text)} · ${money(S.last.total)}</div><div class="row"><button id="undo">Made a mistake? Undo</button></div></div>`;
-  h += '<h2>Pick your drinks</h2><div class="grid">' + st.drinks.map(d => {
+  h += histCard();
+  h += '<h2>Pick your Item' + (S.last ? ' <span class="mut" style="font-weight:400">· your most ordered first</span>' : '') + '</h2><div class="grid">' + st.drinks.map(d => {
     const q = cart[d.name] || 0;
     return `<div class="card drink" style="margin:0"><b>${esc(d.name)}</b><span>${money(d.price)}</span><span class="mut">${d.left > 0 ? d.left + ' left' : 'Out of stock'}</span><div class="row"><button data-m="${esc(d.name)}" ${q <= 0 ? 'disabled' : ''}>−</button><b>${q}</b><button data-p="${esc(d.name)}" ${q >= d.left ? 'disabled' : ''}>+</button></div></div>`;
   }).join('') + '</div>';
@@ -128,7 +128,6 @@ function drawBuy() {
   const items = st.drinks.filter(d => cart[d.name] > 0);
   if (items.length) h += '<div class="card bill" style="margin-top:12px"><b>Your selection</b>' + items.map(d => `<div class="row"><span style="flex:1">${cart[d.name]} × ${esc(d.name)}</span><span>${money(cart[d.name] * d.price)}</span></div>`).join('') +
     `<div class="row"><b style="flex:1">Total</b><b>${money(items.reduce((a, d) => a + cart[d.name] * d.price, 0))}</b></div><div class="row"><button class="pri" id="submit">Submit</button><button id="clear">Clear</button></div><div class="mut">Nothing is recorded until you press Submit. Use − to fix a mistake.</div></div>`;
-  h += histCard();
   h += remindCard();
   h += duePopup();
   $('buy').innerHTML = h;
@@ -198,7 +197,7 @@ function drawAdmin(a) {
   const lowList = a.drinks.filter(d => d.active && d.left <= a.low);
   let h = dashCard(a) + (lowList.length ? '<div class="card bill"><b class="warn">Low stock</b><div>' + lowList.map(d => esc(d.name) + (d.left <= 0 ? ' (out)' : ' (' + d.left + ' left)')).join(', ') + '</div></div>' : '') + '<h2>Stock</h2><div class="card scroll"><table><tr><th>Drink</th><th class="n">Price</th><th class="n">Topped up</th><th class="n">Sold</th><th class="n">Left</th><th>Top up</th><th></th></tr>' +
     a.drinks.map((d, i) => `<tr><td>${esc(d.name)}${d.active ? '' : ' <span class="mut">(retired)</span>'}</td><td class="n"><input id="pr${i}" type="number" step="0.05" min="0" value="${d.price}" style="width:75px"> <button data-pr="${i}">Set</button></td><td class="n">${d.topped}</td><td class="n">${d.sold}</td><td class="n ${d.left <= a.low ? 'warn' : ''}">${d.left}</td><td><input id="tu${i}" type="number" min="1" style="width:70px"> <button data-tu="${i}">Add</button></td><td><button data-rn="${i}">Rename</button> <button data-rt="${i}">${d.active ? 'Retire' : 'Restore'}</button></td></tr>`).join('') + '</table></div>' +
-    '<h2>Add a drink</h2><div class="card"><div class="row"><input id="dn" placeholder="Name (e.g. Coke)"><input id="dp" type="number" step="0.05" min="0" placeholder="Price" style="width:90px"><input id="dq" type="number" min="0" placeholder="Qty" style="width:80px"><button class="pri" id="addD">Add</button></div></div>' +
+    '<h2>Add an item</h2><div class="card"><div class="row"><input id="dn" placeholder="Name (e.g. Coke)"><input id="dp" type="number" step="0.05" min="0" placeholder="Price" style="width:90px"><input id="dq" type="number" min="0" placeholder="Qty" style="width:80px"><button class="pri" id="addD">Add</button></div></div>' +
     '<h2>Add a user</h2><div class="card"><div class="row"><input id="un" placeholder="Name"><input id="ue" type="email" placeholder="Email (required)"><button class="pri" id="addU">Add</button></div><div class="mut">' + a.users.map((u, i) => `<div class="row"><span style="flex:1">${esc(u.name)} ${u.email ? `<span class="mut">${esc(u.email)}</span>` : `<input id="ue${i}" type="email" placeholder="Add email" style="width:180px"> <button data-se="${i}">Set</button>`}</span><button data-rp="${i}">Reset PIN</button> <button data-ru="${i}">Remove</button></div>`).join('') + '</div></div>' +
     '<h2>Billing</h2><div class="row"><label>Month</label><input type="month" id="mo" value="' + month + '"></div><div class="card scroll"><table><tr><th>User</th><th class="n">Drinks</th><th class="n">Total</th><th class="n">Unpaid</th><th class="n">Reported</th><th class="n">Paid</th><th class="n">All months owed</th><th></th></tr>' +
     a.summary.map((u, i) => `<tr><td>${esc(u.name)}</td><td class="n">${u.count}</td><td class="n">${money(u.total)}</td><td class="n ${u.owed > 0 ? 'warn' : ''}">${money(u.owed)}</td><td class="n">${money(u.pending)}</td><td class="n">${money(u.paid)}</td><td class="n ${u.allOwed > 0.005 ? 'warn' : ''}">${money(u.allOwed)}</td><td>${(u.owed + u.pending) > 0 ? `<button data-cp="${i}">Mark month paid</button>` : ''} ${u.allOwed > 0.005 ? `<button data-ca="${i}">Mark all paid</button>` : ''}</td></tr>`).join('') +
