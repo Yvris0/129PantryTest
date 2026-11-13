@@ -17,258 +17,19 @@ nav{display:flex;gap:6px;margin-bottom:14px}.card{background:var(--card);border:
 .scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}
 th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd);white-space:nowrap}td.n,th.n{text-align:right}
 
-/* Responsive layout improvements */
-html {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
-body {
-  min-width: 320px;
-  overflow-x: hidden;
-}
-main {
-  width: 100%;
-}
-button, input, select {
-  min-height: 42px;
-}
-button {
-  touch-action: manipulation;
-}
-input, select {
-  max-width: 100%;
-}
-nav button {
-  flex: 1 1 0;
-  min-width: 0;
-}
-.grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-}
-.scroll {
-  max-width: 100%;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-}
-.scroll table {
-  min-width: max-content;
-}
-.card {
-  min-width: 0;
-}
-.row > input,
-.row > select {
-  min-width: 0;
-}
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-@media (max-width: 600px) {
-  main {
-    padding: 12px;
-  }
-  h1 {
-    font-size: 21px;
-    margin-bottom: 14px;
-  }
-  h2 {
-    margin-top: 18px;
-  }
-  nav {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    padding: 8px 0;
-    margin: -4px 0 10px;
-    background: var(--bg);
-  }
-  nav button {
-    padding: 11px 10px;
-  }
-  .card {
-    padding: 12px;
-    border-radius: 12px;
-  }
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .drink {
-    padding: 12px 10px;
-    gap: 5px;
-  }
-  .drink .row {
-    width: 100%;
-    justify-content: space-between;
-    flex-wrap: nowrap;
-    margin-top: 7px;
-  }
-  .drink .row button {
-    flex: 1;
-    min-width: 42px;
-    padding: 8px 10px;
-    font-size: 18px;
-  }
-  .row {
-    gap: 8px;
-  }
-  .row > input,
-  .row > select {
-    flex: 1 1 100%;
-    width: 100%;
-  }
-  .row > button {
-    flex: 1 1 auto;
-  }
-  .big {
-    font-size: 25px;
-  }
-  .scroll {
-    margin-left: -2px;
-    margin-right: -2px;
-    width: calc(100% + 4px);
-  }
-  .scroll table {
-    font-size: 13px;
-  }
-  th, td {
-    padding: 9px 7px;
-  }
-  /* Keep the account controls usable without forcing a single long row. */
-  #buy > .card:first-child .row {
-    align-items: stretch;
-  }
-  #buy > .card:first-child .row > span {
-    flex-basis: 100%;
-  }
-  #buy > .card:first-child .row > button {
-    flex: 1 1 calc(50% - 4px);
-  }
-  /* Admin forms wrap cleanly on narrow screens. */
-  #adm .row {
-    flex-wrap: wrap;
-  }
-  #adm .row > input,
-  #adm .row > select {
-    flex: 1 1 100%;
-    width: 100% !important;
-  }
-  #adm .row > button {
-    flex: 1 1 auto;
-  }
-  #adm .scroll {
-    border-radius: 10px;
-  }
-}
-
-@media (max-width: 380px) {
-  main {
-    padding: 10px;
-  }
-  .grid {
-    gap: 7px;
-  }
-  .drink {
-    padding: 10px 8px;
-  }
-  .drink b {
-    overflow-wrap: anywhere;
-  }
-  .card {
-    padding: 10px;
-  }
-  .big {
-    font-size: 23px;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  button {
-    transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
-  }
-}
-
-
-/* Neater Add a user form */
-#adm .admin-user-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
-  align-items: center;
-  gap: 10px;
-}
-#adm .admin-user-fields > input {
-  width: 100%;
-  min-width: 0;
-}
-#adm .admin-user-fields > button {
-  justify-self: end;
-  flex: initial;
-  white-space: nowrap;
-}
-@media (max-width: 600px) {
-  #adm .admin-user-fields {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-  #adm .admin-user-fields > input {
-    width: 100% !important;
-  }
-  #adm .admin-user-fields > button {
-    justify-self: end;
-    width: auto;
-    min-width: 0;
-  }
-  /* Tidy user list on mobile & desktop */
-#adm .user-list {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-}
-#adm .user-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 0;
-  border-top: 1px solid var(--bd);
-  flex-wrap: nowrap;
-}
-#adm .user-info {
-  flex: 1 1 auto;
-  min-width: 0; /* Required for text-overflow truncation inside flexbox */
-  display: flex;
-  flex-direction: column;
-}
-#adm .user-name,
-#adm .user-email {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-#adm .user-name {
-  color: var(--fg);
-}
-#adm .user-email {
-  font-size: 13px;
-  color: var(--mut);
-}
-#adm .user-actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-#adm .user-actions button {
-  width: 82px;
-  padding: 6px 4px;
-  font-size: 13px;
-  min-height: 36px;
-  text-align: center;
-  white-space: nowrap;
-}
-}
-
+.nw{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;margin:6px 0}
+.nw>input{flex:1 1 0;min-width:0;text-overflow:ellipsis}
+.nw>input.n1{flex:2 1 0}.nw>input.n2{flex:3 1 0}
+.nw>button{flex:none}.nw>.lbl{flex:none;width:42px}
+.sm{padding:6px 10px;font-size:13px;border-radius:8px}
+.urow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)}
+.urow:last-child{border-bottom:0}
+.ucol{flex:1;min-width:0}
+.uname{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uemail{color:var(--mut);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-h{display:flex;align-items:baseline;gap:8px}
+.kv{display:flex;flex-wrap:wrap;gap:2px 14px;margin:2px 0}
+@media(max-width:480px){main{padding:12px}h1{font-size:18px}.big{font-size:24px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style></head>
 <body><main><h1>Swift Pantry</h1>
 <nav><button id="t-buy" class="on">Log an item</button><button id="t-adm">Admin</button></nav>
@@ -332,8 +93,9 @@ const sigOf = () => `${S.owed}|${S.pending}|${S.count}|${S.total}`;
 const histOpen = () => hist && hist.user === S.name && hist.sig === sigOf();
 function histCard() {
   if (!histOpen()) return '';
-  return `<div class="card scroll"><div class="mut">Paid ${money(hist.paid)} · Reported ${money(hist.pending)} · Unpaid ${money(hist.owed)}</div><table><tr><th>Date</th><th>Items</th><th class="n">Total</th><th>Status</th></tr>` +
-    (hist.list.map(g => `<tr><td>${new Date(g.ts).toLocaleDateString()}</td><td style="white-space:normal">${esc(g.text)}</td><td class="n">${money(g.total)}</td><td>${({ '': 'Unpaid', R: 'Reported', Y: 'Paid' })[g.st]}</td></tr>`).join('') || '<tr><td colspan="4" class="mut">Nothing yet</td></tr>') + '</table></div>';
+  const st = { '': 'Unpaid', R: 'Reported', Y: 'Paid' };
+  return `<div class="card"><div class="mut">Paid ${money(hist.paid)} · Reported ${money(hist.pending)} · Unpaid ${money(hist.owed)}</div>` +
+    (hist.list.map(g => `<div class="urow"><div class="ucol"><div>${esc(g.text)}</div><div class="uemail">${new Date(g.ts).toLocaleDateString()} · ${st[g.st]}</div></div><b>${money(g.total)}</b></div>`).join('') || '<div class="mut">Nothing yet</div>') + '</div>';
 }
 function remindCard() {
   const p = S.prefs;
@@ -373,11 +135,11 @@ function drawBuy() {
   if (S.last && S.last.undo && Date.now() - S.last.ts < 600000)
     h += `<div class="card"><div class="mut">Just submitted</div><div>${esc(S.last.text)} · ${money(S.last.total)}</div><div class="row"><button id="undo">Made a mistake? Undo</button></div></div>`;
   h += histCard();
-  h += '<h2>Pick your Item' + (S.last ? ' <span class="mut" style="font-weight:400">· your most ordered first</span>' : '') + '</h2><div class="grid">' + st.drinks.map(d => {
+  h += '<h2>Pick your items' + (S.last ? ' <span class="mut" style="font-weight:400">· your most ordered first</span>' : '') + '</h2><div class="grid">' + st.drinks.map(d => {
     const q = cart[d.name] || 0;
     return `<div class="card drink" style="margin:0"><b>${esc(d.name)}</b><span>${money(d.price)}</span><span class="mut">${d.left > 0 ? d.left + ' left' : 'Out of stock'}</span><div class="row"><button data-m="${esc(d.name)}" ${q <= 0 ? 'disabled' : ''}>−</button><b>${q}</b><button data-p="${esc(d.name)}" ${q >= d.left ? 'disabled' : ''}>+</button></div></div>`;
   }).join('') + '</div>';
-  if (!st.drinks.length) h += '<p class="mut">No Items yet. The admin needs to add some.</p>';
+  if (!st.drinks.length) h += '<p class="mut">No items yet. The admin needs to add some.</p>';
   const items = st.drinks.filter(d => cart[d.name] > 0);
   if (items.length) h += '<div class="card bill" style="margin-top:12px"><b>Your selection</b>' + items.map(d => `<div class="row"><span style="flex:1">${cart[d.name]} × ${esc(d.name)}</span><span>${money(cart[d.name] * d.price)}</span></div>`).join('') +
     `<div class="row"><b style="flex:1">Total</b><b>${money(items.reduce((a, d) => a + cart[d.name] * d.price, 0))}</b></div><div class="row"><button class="pri" id="submit">Submit</button><button id="clear">Clear</button></div><div class="mut">Nothing is recorded until you press Submit. Use − to fix a mistake.</div></div>`;
@@ -440,7 +202,7 @@ async function adminLoad() {
 }
 function dashCard(a) {
   const d = a.dash, mx = Math.max(1, ...d.trend.map(t => t.total)), diff = d.sales - d.prevSales;
-  let h = `<h2>Dashboard · ${month}</h2><div class="card"><div class="row"><div style="flex:1"><div class="mut">Sales</div><div class="big">${money(d.sales)}</div><div class="mut">${d.count} drink(s) · ${diff >= 0 ? '+' : '−'}${money(Math.abs(diff))} vs last month</div></div><div style="flex:1"><div class="mut">Unpaid (all months)</div><div class="big ${d.owedTotal > 0.005 ? 'warn' : ''}">${money(d.owedTotal)}</div></div></div>`;
+  let h = `<h2>Dashboard · ${month}</h2><div class="card"><div class="row"><div style="flex:1"><div class="mut">Sales</div><div class="big">${money(d.sales)}</div><div class="mut">${d.count} item(s) · ${diff >= 0 ? '+' : '−'}${money(Math.abs(diff))} vs last month</div></div><div style="flex:1"><div class="mut">Unpaid (all months)</div><div class="big ${d.owedTotal > 0.005 ? 'warn' : ''}">${money(d.owedTotal)}</div></div></div>`;
   h += '<div class="mut" style="margin-top:8px">Last 6 months</div>' + d.trend.map(t => `<div class="row" style="flex-wrap:nowrap"><span class="mut" style="width:64px">${t.m}</span><div style="flex:1"><div style="background:var(--ac);height:10px;border-radius:5px;min-width:2px;width:${Math.round(t.total / mx * 100)}%"></div></div><span class="mut">${money(t.total)}</span></div>`).join('');
   h += '<div class="mut" style="margin-top:8px">Top items this month</div>' + (d.top.length ? d.top.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span>${t.qty} · ${money(t.total)}</span></div>`).join('') : '<div class="mut">No sales yet</div>');
   h += '<div class="mut" style="margin-top:8px">Who owes the most</div>' + (d.owes.length ? d.owes.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span class="warn">${money(t.total)}</span></div>`).join('') : '<div class="mut">Everyone is settled</div>');
@@ -448,16 +210,20 @@ function dashCard(a) {
 }
 function drawAdmin(a) {
   const lowList = a.drinks.filter(d => d.active && d.left <= a.low);
-  let h = dashCard(a) + (lowList.length ? '<div class="card bill"><b class="warn">Low stock</b><div>' + lowList.map(d => esc(d.name) + (d.left <= 0 ? ' (out)' : ' (' + d.left + ' left)')).join(', ') + '</div></div>' : '') + '<h2>Stock</h2><div class="card scroll"><table><tr><th>Drink</th><th class="n">Price</th><th class="n">Topped up</th><th class="n">Sold</th><th class="n">Left</th><th>Top up</th><th></th></tr>' +
-    a.drinks.map((d, i) => `<tr><td>${esc(d.name)}${d.active ? '' : ' <span class="mut">(retired)</span>'}</td><td class="n"><input id="pr${i}" type="number" step="0.05" min="0" value="${d.price}" style="width:75px"> <button data-pr="${i}">Set</button></td><td class="n">${d.topped}</td><td class="n">${d.sold}</td><td class="n ${d.left <= a.low ? 'warn' : ''}">${d.left}</td><td><input id="tu${i}" type="number" min="1" style="width:70px"> <button data-tu="${i}">Add</button></td><td><button data-rn="${i}">Rename</button> <button data-rt="${i}">${d.active ? 'Retire' : 'Restore'}</button></td></tr>`).join('') + '</table></div>' +
-    '<h2>Add an item</h2><div class="card"><div class="row"><input id="dn" placeholder="Name (e.g. Coke)"><input id="dp" type="number" step="0.05" min="0" placeholder="Price" style="width:90px"><input id="dq" type="number" min="0" placeholder="Qty" style="width:80px"><button class="pri" id="addD">Add</button></div></div>' +
-    '<h2>Add a user</h2><div class="card admin-user-form"><div class="row admin-user-fields"><input id="un" placeholder="Name"><input id="ue" type="email" placeholder="Email (required)"><button class="pri" id="addU">Add</button></div><div class="user-list">' + a.users.map((u, i) => `<div class="user-row"><div class="user-info"><div style="display:flex;flex-direction:column;min-width:0"><span class="user-name">${esc(u.name)}</span>${u.email ? `<span class="user-email">${esc(u.email.toLowerCase())}</span>` : ...} : `<div class="row" style="margin:2px 0;flex-wrap:nowrap"><input id="ue${i}" type="email" placeholder="Add email" style="padding:4px 8px;min-height:32px;font-size:13px"><button data-se="${i}" style="padding:4px 8px;min-height:32px;font-size:13px">Set</button></div>`}</div></div><div class="user-actions"><button data-rp="${i}">Reset PIN</button><button data-ru="${i}">Remove</button></div></div>`).join('') + '</div></div>' +
-    '<h2>Billing</h2><div class="row"><label>Month</label><input type="month" id="mo" value="' + (isNaN(month) || !month ? new Date().toISOString().slice(0, 7) : month) + '"></div>' +
-    a.summary.map((u, i) => `<tr><td>${esc(u.name)}</td><td class="n">${u.count}</td><td class="n">${money(u.total)}</td><td class="n ${u.owed > 0 ? 'warn' : ''}">${money(u.owed)}</td><td class="n">${money(u.pending)}</td><td class="n">${money(u.paid)}</td><td class="n ${u.allOwed > 0.005 ? 'warn' : ''}">${money(u.allOwed)}</td><td>${(u.owed + u.pending) > 0 ? `<button data-cp="${i}">Mark month paid</button>` : ''} ${u.allOwed > 0.005 ? `<button data-ca="${i}">Mark all paid</button>` : ''}</td></tr>`).join('') +
-    `<tr><th>All</th><th class="n">${a.summary.reduce((x, u) => x + u.count, 0)}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.total, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.owed, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.pending, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.paid, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.allOwed, 0))}</th><th></th></tr></table></div>` +
+  const nm = s => `<b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s)}</b>`;
+  const tot = k => a.summary.reduce((x, u) => x + u[k], 0);
+  let h = dashCard(a) + (lowList.length ? '<div class="card bill"><b class="warn">Low stock</b><div>' + lowList.map(d => esc(d.name) + (d.left <= 0 ? ' (out)' : ' (' + d.left + ' left)')).join(', ') + '</div></div>' : '') +
+    '<h2>Stock</h2>' + a.drinks.map((d, i) => `<div class="card"><div class="item-h">${nm(d.name + (d.active ? '' : ' (retired)'))}<span class="${d.left <= a.low ? 'warn' : ''}"><b>${d.left}</b> left</span></div><div class="mut">Topped up ${d.topped} · Sold ${d.sold}</div><div class="nw"><label class="mut lbl">Price</label><input id="pr${i}" type="number" step="0.05" min="0" value="${d.price}"><button class="sm" data-pr="${i}">Set</button></div><div class="nw"><label class="mut lbl">Add</label><input id="tu${i}" type="number" min="1" placeholder="Qty"><button class="sm" data-tu="${i}">Top up</button></div><div class="nw"><button class="sm" data-rn="${i}">Rename</button><button class="sm" data-rt="${i}">${d.active ? 'Retire' : 'Restore'}</button></div></div>`).join('') +
+    '<h2>Add an item</h2><div class="card"><div class="nw"><input id="dn" placeholder="Name (e.g. Coke)"></div><div class="nw"><input id="dp" type="number" step="0.05" min="0" placeholder="Price"><input id="dq" type="number" min="0" placeholder="Qty"><button class="pri sm" id="addD">Add</button></div></div>' +
+    '<h2>Add a user</h2><div class="card"><div class="nw"><input id="un" class="n1" placeholder="Name"><input id="ue" class="n2" type="email" placeholder="Email"><button class="pri sm" id="addU">Add</button></div></div>' +
+    '<h2>Users (' + a.users.length + ')</h2><div class="card">' + (a.users.map((u, i) => `<div class="urow"><div class="ucol"><div class="uname">${esc(u.name)}</div>${u.email ? `<div class="uemail">${esc(u.email)}</div>` : `<div class="nw"><input id="ue${i}" type="email" placeholder="Add email"><button class="sm" data-se="${i}">Set</button></div>`}</div><button class="sm" data-rp="${i}">Reset PIN</button><button class="sm" data-ru="${i}">Remove</button></div>`).join('') || '<div class="mut">No users yet.</div>') + '</div>' +
+    '<h2>Billing</h2><div class="row"><label>Month</label><input type="month" id="mo" value="' + month + '"></div>' +
+    `<div class="card bill"><div class="item-h"><b style="flex:1">All users</b><b>${money(tot('total'))}</b></div><div class="mut">${tot('count')} item(s)</div><div class="kv"><span>Unpaid <b>${money(tot('owed'))}</b></span><span>Reported <b>${money(tot('pending'))}</b></span><span>Paid <b>${money(tot('paid'))}</b></span></div><div class="${tot('allOwed') > 0.005 ? 'warn' : 'mut'}">All months owed <b>${money(tot('allOwed'))}</b></div></div>` +
+    a.summary.map((u, i) => `<div class="card"><div class="item-h">${nm(u.name)}<b>${money(u.total)}</b></div><div class="mut">${u.count} item(s) this month</div><div class="kv"><span class="${u.owed > 0 ? 'warn' : ''}">Unpaid <b>${money(u.owed)}</b></span><span>Reported <b>${money(u.pending)}</b></span><span>Paid <b>${money(u.paid)}</b></span></div><div class="${u.allOwed > 0.005 ? 'warn' : 'mut'}">All months owed <b>${money(u.allOwed)}</b></div>` +
+      (((u.owed + u.pending) > 0 || u.allOwed > 0.005) ? `<div class="row">${(u.owed + u.pending) > 0 ? `<button class="sm" data-cp="${i}">Mark month paid</button>` : ''}${u.allOwed > 0.005 ? `<button class="sm" data-ca="${i}">Mark all paid</button>` : ''}</div>` : '') + '</div>').join('') +
     '<div class="row"><button class="pri" id="sum">Create summary sheet</button><button id="snd">Email reminders now</button></div>' +
     '<p class="mut">Reminders also go out automatically on the last day of each month.</p>' +
-    '<h2>Alert emails</h2><div class="card"><div class="row"><input id="ae" style="flex:1" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>' + payCard(a) + tgAdminCard(a);
+    '<h2>Alert emails</h2><div class="card"><div class="nw"><input id="ae" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri sm" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>' + payCard(a) + tgAdminCard(a);
   $('adm').innerHTML = h;
   const done = async (p, m) => { await safe(p); const err = safe.err; if (!err && m) flash(m); await adminLoad(); if (err) flash(err.replace(/^Error:\s*/, ''), 10000); };
   document.querySelectorAll('[data-tu]').forEach(b => b.onclick = () => done(run('topUp', pin, a.drinks[b.dataset.tu].name, $('tu' + b.dataset.tu).value), 'Stock updated'));
