@@ -369,7 +369,7 @@ function drawBuy() {
     (S.prevOwed > 0 ? '<div class="row"><button class="pri" id="duebtn">Pay previous balance</button></div>' : '') +
     (S.owed > 0 && pay.on ? '<div class="row"><button class="pri" id="pay">Pay now</button></div>' : '') +
     (S.pending > 0 ? `<div class="mut">${money(S.pending)} reported paid, awaiting admin confirmation</div>` : '') +
-    `<div class="mut" style="margin-top:8px">This month (${S.month}): ${money(S.total)} · ${S.count} drink(s)${pay.on ? '' : ' · pay at end of month'}</div></div>`;
+    `<div class="mut" style="margin-top:8px">This month (${S.month}): ${money(S.total)} · ${S.count} item(s)${pay.on ? '' : ' · pay at end of month'}</div></div>`;
   if (S.last && S.last.undo && Date.now() - S.last.ts < 600000)
     h += `<div class="card"><div class="mut">Just submitted</div><div>${esc(S.last.text)} · ${money(S.last.total)}</div><div class="row"><button id="undo">Made a mistake? Undo</button></div></div>`;
   h += histCard();
@@ -442,7 +442,7 @@ function dashCard(a) {
   const d = a.dash, mx = Math.max(1, ...d.trend.map(t => t.total)), diff = d.sales - d.prevSales;
   let h = `<h2>Dashboard · ${month}</h2><div class="card"><div class="row"><div style="flex:1"><div class="mut">Sales</div><div class="big">${money(d.sales)}</div><div class="mut">${d.count} drink(s) · ${diff >= 0 ? '+' : '−'}${money(Math.abs(diff))} vs last month</div></div><div style="flex:1"><div class="mut">Unpaid (all months)</div><div class="big ${d.owedTotal > 0.005 ? 'warn' : ''}">${money(d.owedTotal)}</div></div></div>`;
   h += '<div class="mut" style="margin-top:8px">Last 6 months</div>' + d.trend.map(t => `<div class="row" style="flex-wrap:nowrap"><span class="mut" style="width:64px">${t.m}</span><div style="flex:1"><div style="background:var(--ac);height:10px;border-radius:5px;min-width:2px;width:${Math.round(t.total / mx * 100)}%"></div></div><span class="mut">${money(t.total)}</span></div>`).join('');
-  h += '<div class="mut" style="margin-top:8px">Top Items this month</div>' + (d.top.length ? d.top.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span>${t.qty} · ${money(t.total)}</span></div>`).join('') : '<div class="mut">No sales yet</div>');
+  h += '<div class="mut" style="margin-top:8px">Top items this month</div>' + (d.top.length ? d.top.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span>${t.qty} · ${money(t.total)}</span></div>`).join('') : '<div class="mut">No sales yet</div>');
   h += '<div class="mut" style="margin-top:8px">Who owes the most</div>' + (d.owes.length ? d.owes.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span class="warn">${money(t.total)}</span></div>`).join('') : '<div class="mut">Everyone is settled</div>');
   return h + '</div>';
 }
@@ -465,8 +465,8 @@ function drawAdmin(a) {
   document.querySelectorAll('[data-ru]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.ru]; if (confirm('Remove ' + u.name + '? Past purchases stay on record.')) done(run('removeUser', pin, u.name), 'User removed'); });
   document.querySelectorAll('[data-ca]').forEach(b => b.onclick = () => { const u = a.summary[b.dataset.ca]; if (confirm('Mark everything ' + u.name + ' owes (all months) as paid?')) done(run('confirmAllPaid', pin, u.name), 'Marked as paid'); });
   document.querySelectorAll('[data-rn]').forEach(b => b.onclick = () => { const d = a.drinks[b.dataset.rn], n = prompt('New name for ' + d.name, d.name); if (n && n.trim() && n.trim() !== d.name) done(run('renameDrink', pin, d.name, n), 'Renamed'); });
-  document.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => { const d = a.drinks[b.dataset.rt]; if (!d.active || confirm('Retire ' + d.name + '? Users will no longer see it. History is kept and you can restore it later.')) done(run('setDrinkActive', pin, d.name, !d.active), d.active ? 'Drink retired' : 'Drink restored'); });
-  document.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const u = a.summary[b.dataset.cp]; if (confirm('Mark all of ' + u.name + "'s " + month + ' drinks as paid?')) done(run('confirmPaid', pin, u.name, month), 'Marked as paid'); });
+  document.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => { const d = a.drinks[b.dataset.rt]; if (!d.active || confirm('Retire ' + d.name + '? Users will no longer see it. History is kept and you can restore it later.')) done(run('setDrinkActive', pin, d.name, !d.active), d.active ? 'Item retired' : 'Item restored'); });
+  document.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const u = a.summary[b.dataset.cp]; if (confirm('Mark all of ' + u.name + "'s " + month + ' items as paid?')) done(run('confirmPaid', pin, u.name, month), 'Marked as paid'); });
   document.querySelectorAll('[data-se]').forEach(b => b.onclick = () => done(run('setEmail', pin, a.users[b.dataset.se].name, $('ue' + b.dataset.se).value), 'Email saved'));
   document.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.rp]; if (confirm('Reset the PIN for ' + u.name + '? They will choose a new one at next sign-in.')) done(run('resetPin', pin, u.name), 'PIN reset'); });
   if ($('paysave')) $('paysave').onclick = () => done(run('setPayment', pin, $('pyn').value, $('pyu').value, $('pyx').value), 'Payment details saved');
@@ -475,7 +475,7 @@ function drawAdmin(a) {
   if ($('atgc')) $('atgc').onclick = async () => { const l = await safe(run('adminTgLink', pin)); if (l) { atgUrl = l.url; drawAdmin(a); pollAdminTg(a.adminTg); } };
   if ($('atgx')) $('atgx').onclick = () => done(run('adminTgClear', pin), 'Admin Telegram cleared');
   $('saveAE').onclick = () => done(run('setAdminEmails', pin, $('ae').value), 'Alert emails saved');
-  $('addD').onclick = () => done(run('addDrink', pin, $('dn').value, parseFloat($('dp').value), $('dq').value), 'Drink added');
+  $('addD').onclick = () => done(run('addDrink', pin, $('dn').value, parseFloat($('dp').value), $('dq').value), 'Item added');
   $('addU').onclick = () => done(run('addUser', pin, $('un').value, $('ue').value), 'User added');
   $('mo').onchange = e => { if (e.target.value) { month = e.target.value; adminLoad(); } };
   $('sum').onclick = async () => { const u = await safe(run('createSummary', pin, month)); if (u) window.open(u, '_blank'); };
