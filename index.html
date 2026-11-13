@@ -35,7 +35,7 @@ const run = async (fn, ...a) => {
   if (!r.ok) throw new Error(r.error);
   return r.v;
 };
-let dueDismissed = false, cart = {}, pay = { on: false }, showPay = false, me = null, S = null, pin = null, month = new Date().toISOString().slice(0, 7);
+let hist = null, atgUrl = null, tgUrl = null, dueDismissed = false, cart = {}, pay = { on: false }, showPay = false, me = null, S = null, pin = null, month = new Date().toISOString().slice(0, 7);
 let tok = null;
 try { tok = localStorage.getItem('tok') || null; } catch (e) {}
 
@@ -74,6 +74,32 @@ function drawLogin(email) {
   $('go').onclick = go;
   $('pn').onkeydown = e => { if (e.key === 'Enter') go(); };
 }
+const sigOf = () => `${S.owed}|${S.pending}|${S.count}|${S.total}`;
+function histCard() {
+  const ok = hist && hist.user === S.name && hist.sig === sigOf();
+  let h = `<div class="row" style="margin-top:12px"><button id="hist">${ok ? 'Hide my history' : 'My history'}</button></div>`;
+  if (ok) h += `<div class="card scroll"><div class="mut">Paid ${money(hist.paid)} · Reported ${money(hist.pending)} · Unpaid ${money(hist.owed)}</div><table><tr><th>Date</th><th>Items</th><th class="n">Total</th><th>Status</th></tr>` +
+    (hist.list.map(g => `<tr><td>${new Date(g.ts).toLocaleDateString()}</td><td style="white-space:normal">${esc(g.text)}</td><td class="n">${money(g.total)}</td><td>${({ '': 'Unpaid', R: 'Reported', Y: 'Paid' })[g.st]}</td></tr>`).join('') || '<tr><td colspan="4" class="mut">Nothing yet</td></tr>') + '</table></div>';
+  return h;
+}
+function remindCard() {
+  const p = S.prefs;
+  if (!p || !p.botReady) return '';
+  const sel = (v, t) => `<option value="${v}" ${p.notify === v ? 'selected' : ''} ${v !== 'email' && !p.connected ? 'disabled' : ''}>${t}</option>`;
+  let h = '<h2>Reminders</h2><div class="card"><div class="row"><label>Send reminders by</label><select id="nt">' + sel('email', 'Email') + sel('telegram', 'Telegram') + sel('both', 'Both') + '</select></div>';
+  if (p.connected) h += '<div class="row"><span class="mut" style="flex:1">Telegram connected</span><button id="tgd">Disconnect</button></div>';
+  else if (tgUrl) h += `<p><a href="${esc(tgUrl)}" target="_blank" rel="noopener">Open Telegram and press Start</a> <span class="mut">(waiting…)</span></p>`;
+  else h += '<div class="row"><button class="pri" id="tgc">Connect Telegram</button></div>';
+  return h + '</div>';
+}
+async function pollTg() {
+  for (let i = 0; i < 40 && tgUrl && tok; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    const r = await safe(run('tgCheck', tok));
+    if (r && r.prefs.connected) { S = r; tgUrl = null; drawBuy(); flash('Telegram connected'); return; }
+  }
+  tgUrl = null; if (tok && S) drawBuy();
+}
 function duePopup() {
   if (!(S.prevOwed > 0) || dueDismissed) return '';
   const months = Object.keys(S.byMonth).filter(k => k < S.month).sort().map(k => `<div class="mut">${k}: ${money(S.byMonth[k])}</div>`).join('');
@@ -101,6 +127,8 @@ function drawBuy() {
   const items = st.drinks.filter(d => cart[d.name] > 0);
   if (items.length) h += '<div class="card bill" style="margin-top:12px"><b>Your selection</b>' + items.map(d => `<div class="row"><span style="flex:1">${cart[d.name]} × ${esc(d.name)}</span><span>${money(cart[d.name] * d.price)}</span></div>`).join('') +
     `<div class="row"><b style="flex:1">Total</b><b>${money(items.reduce((a, d) => a + cart[d.name] * d.price, 0))}</b></div><div class="row"><button class="pri" id="submit">Submit</button><button id="clear">Clear</button></div><div class="mut">Nothing is recorded until you press Submit. Use − to fix a mistake.</div></div>`;
+  h += histCard();
+  h += remindCard();
   h += duePopup();
   $('buy').innerHTML = h;
   $('so').onclick = async () => { await tryRun('signOut', tok); tok = null; me = null; try { localStorage.removeItem('tok'); } catch (x) {} drawLogin(); };
@@ -115,38 +143,79 @@ function drawBuy() {
     const r = await safe(run('logPurchases', tok, items.map(d => ({ drink: d.name, qty: cart[d.name] }))));
     if (r) { S = r; cart = {}; if (pay.on) showPay = true; drawBuy(); flash('Submitted. Thank you!'); } else loadBuy();
   };
+  if ($('hist')) $('hist').onclick = async () => {
+    if (hist && hist.user === S.name && hist.sig === sigOf()) { hist = null; drawBuy(); return; }
+    const r = await safe(run('myHistory', tok));
+    if (r) { hist = r; hist.user = S.name; hist.sig = sigOf(); drawBuy(); }
+  };
+  if ($('nt')) $('nt').onchange = async () => { const r = await safe(run('setNotify', tok, $('nt').value)); if (r) { S = r; flash('Saved'); } drawBuy(); };
+  if ($('tgc')) $('tgc').onclick = async () => { const l = await safe(run('tgLink', tok)); if (l) { tgUrl = l.url; drawBuy(); pollTg(); } };
+  if ($('tgd')) $('tgd').onclick = async () => { const r = await safe(run('tgDisconnect', tok)); if (r) { S = r; drawBuy(); flash('Telegram disconnected'); } };
   if ($('duebtn')) $('duebtn').onclick = () => { dueDismissed = false; drawBuy(); };
   if ($('duelater')) $('duelater').onclick = () => { dueDismissed = true; drawBuy(); };
   if ($('duepaid')) $('duepaid').onclick = async () => { const r = await safe(run('markPaid', tok, 'prev')); if (r) { S = r; drawBuy(); flash('Thanks! The admin will confirm your payment.'); } };
   if ($('undo')) $('undo').onclick = async () => { const r = await safe(run('undoLast', tok)); if (r) { S = r; showPay = false; drawBuy(); flash('Last submission removed'); } else loadBuy(); };
 }
 
+function tgAdminCard(a) {
+  let h = '<h2>Telegram</h2><div class="card">';
+  if (!a.tgBot) h += '<div class="mut">Create a bot with @BotFather on Telegram, then paste its token here.</div><div class="row"><input id="tgtok" type="password" placeholder="Bot token" style="flex:1"><button class="pri" id="tgsave">Connect bot</button></div>';
+  else {
+    h += `<div class="row"><span style="flex:1">Bot: <b>@${esc(a.tgBot)}</b></span><button id="tgrm">Remove bot</button></div><div class="mut">${a.adminTg} admin chat(s) connected for alerts</div>` +
+      (atgUrl ? `<p><a href="${esc(atgUrl)}" target="_blank" rel="noopener">Open Telegram and press Start</a> <span class="mut">(waiting…)</span></p>` :
+        '<div class="row"><button class="pri" id="atgc">Connect my Telegram for alerts</button>' + (a.adminTg > 0 ? '<button id="atgx">Clear</button>' : '') + '</div>');
+  }
+  return h + '</div>';
+}
+async function pollAdminTg(before) {
+  for (let i = 0; i < 40 && atgUrl && pin; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    const r = await safe(run('adminTgCheck', pin));
+    if (r && r.n > before) { atgUrl = null; adminLoad(); flash('Telegram connected for alerts'); return; }
+  }
+  atgUrl = null; if (pin) adminLoad();
+}
 async function adminLoad() {
   if (!pin) { pin = prompt('Admin PIN'); if (!pin) { showTab('buy'); return; } }
   const r = await safe(run('adminState', pin, month));
   if (!r) { pin = null; showTab('buy'); return; }
   drawAdmin(r);
 }
+function dashCard(a) {
+  const d = a.dash, mx = Math.max(1, ...d.trend.map(t => t.total)), diff = d.sales - d.prevSales;
+  let h = `<h2>Dashboard · ${month}</h2><div class="card"><div class="row"><div style="flex:1"><div class="mut">Sales</div><div class="big">${money(d.sales)}</div><div class="mut">${d.count} drink(s) · ${diff >= 0 ? '+' : '−'}${money(Math.abs(diff))} vs last month</div></div><div style="flex:1"><div class="mut">Unpaid (all months)</div><div class="big ${d.owedTotal > 0.005 ? 'warn' : ''}">${money(d.owedTotal)}</div></div></div>`;
+  h += '<div class="mut" style="margin-top:8px">Last 6 months</div>' + d.trend.map(t => `<div class="row" style="flex-wrap:nowrap"><span class="mut" style="width:64px">${t.m}</span><div style="flex:1"><div style="background:var(--ac);height:10px;border-radius:5px;min-width:2px;width:${Math.round(t.total / mx * 100)}%"></div></div><span class="mut">${money(t.total)}</span></div>`).join('');
+  h += '<div class="mut" style="margin-top:8px">Top drinks this month</div>' + (d.top.length ? d.top.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span>${t.qty} · ${money(t.total)}</span></div>`).join('') : '<div class="mut">No sales yet</div>');
+  h += '<div class="mut" style="margin-top:8px">Who owes the most</div>' + (d.owes.length ? d.owes.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span class="warn">${money(t.total)}</span></div>`).join('') : '<div class="mut">Everyone is settled</div>');
+  return h + '</div>';
+}
 function drawAdmin(a) {
-  const lowList = a.drinks.filter(d => d.left <= a.low);
-  let h = (lowList.length ? '<div class="card bill"><b class="warn">Low stock</b><div>' + lowList.map(d => esc(d.name) + (d.left <= 0 ? ' (out)' : ' (' + d.left + ' left)')).join(', ') + '</div></div>' : '') + '<h2>Stock</h2><div class="card scroll"><table><tr><th>Drink</th><th class="n">Price</th><th class="n">Topped up</th><th class="n">Sold</th><th class="n">Left</th><th>Top up</th></tr>' +
-    a.drinks.map((d, i) => `<tr><td>${esc(d.name)}</td><td class="n"><input id="pr${i}" type="number" step="0.05" min="0" value="${d.price}" style="width:75px"> <button data-pr="${i}">Set</button></td><td class="n">${d.topped}</td><td class="n">${d.sold}</td><td class="n ${d.left <= a.low ? 'warn' : ''}">${d.left}</td><td><input id="tu${i}" type="number" min="1" style="width:70px"> <button data-tu="${i}">Add</button></td></tr>`).join('') + '</table></div>' +
+  const lowList = a.drinks.filter(d => d.active && d.left <= a.low);
+  let h = dashCard(a) + (lowList.length ? '<div class="card bill"><b class="warn">Low stock</b><div>' + lowList.map(d => esc(d.name) + (d.left <= 0 ? ' (out)' : ' (' + d.left + ' left)')).join(', ') + '</div></div>' : '') + '<h2>Stock</h2><div class="card scroll"><table><tr><th>Drink</th><th class="n">Price</th><th class="n">Topped up</th><th class="n">Sold</th><th class="n">Left</th><th>Top up</th><th></th></tr>' +
+    a.drinks.map((d, i) => `<tr><td>${esc(d.name)}${d.active ? '' : ' <span class="mut">(retired)</span>'}</td><td class="n"><input id="pr${i}" type="number" step="0.05" min="0" value="${d.price}" style="width:75px"> <button data-pr="${i}">Set</button></td><td class="n">${d.topped}</td><td class="n">${d.sold}</td><td class="n ${d.left <= a.low ? 'warn' : ''}">${d.left}</td><td><input id="tu${i}" type="number" min="1" style="width:70px"> <button data-tu="${i}">Add</button></td><td><button data-rn="${i}">Rename</button> <button data-rt="${i}">${d.active ? 'Retire' : 'Restore'}</button></td></tr>`).join('') + '</table></div>' +
     '<h2>Add a drink</h2><div class="card"><div class="row"><input id="dn" placeholder="Name (e.g. Coke)"><input id="dp" type="number" step="0.05" min="0" placeholder="Price" style="width:90px"><input id="dq" type="number" min="0" placeholder="Qty" style="width:80px"><button class="pri" id="addD">Add</button></div></div>' +
     '<h2>Add a user</h2><div class="card"><div class="row"><input id="un" placeholder="Name"><input id="ue" type="email" placeholder="Email (required)"><button class="pri" id="addU">Add</button></div><div class="mut">' + a.users.map((u, i) => `<div class="row"><span style="flex:1">${esc(u.name)} ${u.email ? `<span class="mut">${esc(u.email)}</span>` : `<input id="ue${i}" type="email" placeholder="Add email" style="width:180px"> <button data-se="${i}">Set</button>`}</span><button data-rp="${i}">Reset PIN</button> <button data-ru="${i}">Remove</button></div>`).join('') + '</div></div>' +
-    '<h2>Billing</h2><div class="row"><label>Month</label><input type="month" id="mo" value="' + month + '"></div><div class="card scroll"><table><tr><th>User</th><th class="n">Drinks</th><th class="n">Total</th><th class="n">Unpaid</th><th class="n">Reported</th><th class="n">Paid</th><th></th></tr>' +
-    a.summary.map((u, i) => `<tr><td>${esc(u.name)}</td><td class="n">${u.count}</td><td class="n">${money(u.total)}</td><td class="n ${u.owed > 0 ? 'warn' : ''}">${money(u.owed)}</td><td class="n">${money(u.pending)}</td><td class="n">${money(u.paid)}</td><td>${(u.owed + u.pending) > 0 ? `<button data-cp="${i}">Mark paid</button>` : ''}</td></tr>`).join('') +
-    `<tr><th>All</th><th class="n">${a.summary.reduce((x, u) => x + u.count, 0)}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.total, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.owed, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.pending, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.paid, 0))}</th><th></th></tr></table></div>` +
+    '<h2>Billing</h2><div class="row"><label>Month</label><input type="month" id="mo" value="' + month + '"></div><div class="card scroll"><table><tr><th>User</th><th class="n">Drinks</th><th class="n">Total</th><th class="n">Unpaid</th><th class="n">Reported</th><th class="n">Paid</th><th class="n">All months owed</th><th></th></tr>' +
+    a.summary.map((u, i) => `<tr><td>${esc(u.name)}</td><td class="n">${u.count}</td><td class="n">${money(u.total)}</td><td class="n ${u.owed > 0 ? 'warn' : ''}">${money(u.owed)}</td><td class="n">${money(u.pending)}</td><td class="n">${money(u.paid)}</td><td class="n ${u.allOwed > 0.005 ? 'warn' : ''}">${money(u.allOwed)}</td><td>${(u.owed + u.pending) > 0 ? `<button data-cp="${i}">Mark month paid</button>` : ''} ${u.allOwed > 0.005 ? `<button data-ca="${i}">Mark all paid</button>` : ''}</td></tr>`).join('') +
+    `<tr><th>All</th><th class="n">${a.summary.reduce((x, u) => x + u.count, 0)}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.total, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.owed, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.pending, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.paid, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.allOwed, 0))}</th><th></th></tr></table></div>` +
     '<div class="row"><button class="pri" id="sum">Create summary sheet</button><button id="snd">Email reminders now</button></div>' +
     '<p class="mut">Reminders also go out automatically on the last day of each month.</p>' +
-    '<h2>Alert emails</h2><div class="card"><div class="row"><input id="ae" style="flex:1" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>';
+    '<h2>Alert emails</h2><div class="card"><div class="row"><input id="ae" style="flex:1" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>' + tgAdminCard(a);
   $('adm').innerHTML = h;
   const done = async (p, m) => { const r = await safe(p); if (r !== undefined || m) { if (m) flash(m); } adminLoad(); };
   document.querySelectorAll('[data-tu]').forEach(b => b.onclick = () => done(run('topUp', pin, a.drinks[b.dataset.tu].name, $('tu' + b.dataset.tu).value), 'Stock updated'));
   document.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => done(run('setPrice', pin, a.drinks[b.dataset.pr].name, parseFloat($('pr' + b.dataset.pr).value)), 'Price updated (applies to new purchases)'));
   document.querySelectorAll('[data-ru]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.ru]; if (confirm('Remove ' + u.name + '? Past purchases stay on record.')) done(run('removeUser', pin, u.name), 'User removed'); });
+  document.querySelectorAll('[data-ca]').forEach(b => b.onclick = () => { const u = a.summary[b.dataset.ca]; if (confirm('Mark everything ' + u.name + ' owes (all months) as paid?')) done(run('confirmAllPaid', pin, u.name), 'Marked as paid'); });
+  document.querySelectorAll('[data-rn]').forEach(b => b.onclick = () => { const d = a.drinks[b.dataset.rn], n = prompt('New name for ' + d.name, d.name); if (n && n.trim() && n.trim() !== d.name) done(run('renameDrink', pin, d.name, n), 'Renamed'); });
+  document.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => { const d = a.drinks[b.dataset.rt]; if (!d.active || confirm('Retire ' + d.name + '? Users will no longer see it. History is kept and you can restore it later.')) done(run('setDrinkActive', pin, d.name, !d.active), d.active ? 'Drink retired' : 'Drink restored'); });
   document.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const u = a.summary[b.dataset.cp]; if (confirm('Mark all of ' + u.name + "'s " + month + ' drinks as paid?')) done(run('confirmPaid', pin, u.name, month), 'Marked as paid'); });
   document.querySelectorAll('[data-se]').forEach(b => b.onclick = () => done(run('setEmail', pin, a.users[b.dataset.se].name, $('ue' + b.dataset.se).value), 'Email saved'));
   document.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.rp]; if (confirm('Reset the PIN for ' + u.name + '? They will choose a new one at next sign-in.')) done(run('resetPin', pin, u.name), 'PIN reset'); });
+  if ($('tgsave')) $('tgsave').onclick = () => done(run('setTelegram', pin, $('tgtok').value), 'Telegram bot connected');
+  if ($('tgrm')) $('tgrm').onclick = () => { if (confirm('Remove the Telegram bot? Users will fall back to email.')) done(run('setTelegram', pin, ''), 'Telegram bot removed'); };
+  if ($('atgc')) $('atgc').onclick = async () => { const l = await safe(run('adminTgLink', pin)); if (l) { atgUrl = l.url; drawAdmin(a); pollAdminTg(a.adminTg); } };
+  if ($('atgx')) $('atgx').onclick = () => done(run('adminTgClear', pin), 'Admin Telegram cleared');
   $('saveAE').onclick = () => done(run('setAdminEmails', pin, $('ae').value), 'Alert emails saved');
   $('addD').onclick = () => done(run('addDrink', pin, $('dn').value, parseFloat($('dp').value), $('dq').value), 'Drink added');
   $('addU').onclick = () => done(run('addUser', pin, $('un').value, $('ue').value), 'User added');
