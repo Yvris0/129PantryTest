@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Drinks Tab</title>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Swift Pantry</title>
 <style>
 :root{--bg:#fafaf7;--fg:#1d1d1b;--mut:#6b6b66;--card:#fff;--bd:#e3e3dc;--ac:#0f6e56;--acf:#fff;--warn:#b3261e;color-scheme:light dark}
 @media(prefers-color-scheme:dark){:root{--bg:#171716;--fg:#ecece6;--mut:#9a9a92;--card:#222221;--bd:#3a3a37;--ac:#4fbf9f;--acf:#10231d;--warn:#ff8a80}}
@@ -220,11 +220,58 @@ img {
     width: auto;
     min-width: 0;
   }
+  /* Tidy user list on mobile & desktop */
+#adm .user-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+}
+#adm .user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--bd);
+  flex-wrap: nowrap;
+}
+#adm .user-info {
+  flex: 1 1 auto;
+  min-width: 0; /* Required for text-overflow truncation inside flexbox */
+  display: flex;
+  flex-direction: column;
+}
+#adm .user-name,
+#adm .user-email {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#adm .user-name {
+  color: var(--fg);
+}
+#adm .user-email {
+  font-size: 13px;
+  color: var(--mut);
+}
+#adm .user-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+#adm .user-actions button {
+  width: 82px;
+  padding: 6px 4px;
+  font-size: 13px;
+  min-height: 36px;
+  text-align: center;
+  white-space: nowrap;
+}
 }
 
 </style></head>
-<body><main><h1>Drinks Tab</h1>
-<nav><button id="t-buy" class="on">Log a drink</button><button id="t-adm">Admin</button></nav>
+<body><main><h1>Swift Pantry</h1>
+<nav><button id="t-buy" class="on">Log an item</button><button id="t-adm">Admin</button></nav>
 <div id="buy"></div><div id="adm" hidden></div><p id="msg" class="mut"></p></main>
 <script>
 const $ = id => document.getElementById(id);
@@ -326,11 +373,11 @@ function drawBuy() {
   if (S.last && S.last.undo && Date.now() - S.last.ts < 600000)
     h += `<div class="card"><div class="mut">Just submitted</div><div>${esc(S.last.text)} · ${money(S.last.total)}</div><div class="row"><button id="undo">Made a mistake? Undo</button></div></div>`;
   h += histCard();
-  h += '<h2>Pick your drinks' + (S.last ? ' <span class="mut" style="font-weight:400">· your most ordered first</span>' : '') + '</h2><div class="grid">' + st.drinks.map(d => {
+  h += '<h2>Pick your Item' + (S.last ? ' <span class="mut" style="font-weight:400">· your most ordered first</span>' : '') + '</h2><div class="grid">' + st.drinks.map(d => {
     const q = cart[d.name] || 0;
     return `<div class="card drink" style="margin:0"><b>${esc(d.name)}</b><span>${money(d.price)}</span><span class="mut">${d.left > 0 ? d.left + ' left' : 'Out of stock'}</span><div class="row"><button data-m="${esc(d.name)}" ${q <= 0 ? 'disabled' : ''}>−</button><b>${q}</b><button data-p="${esc(d.name)}" ${q >= d.left ? 'disabled' : ''}>+</button></div></div>`;
   }).join('') + '</div>';
-  if (!st.drinks.length) h += '<p class="mut">No drinks yet. The admin needs to add some.</p>';
+  if (!st.drinks.length) h += '<p class="mut">No Items yet. The admin needs to add some.</p>';
   const items = st.drinks.filter(d => cart[d.name] > 0);
   if (items.length) h += '<div class="card bill" style="margin-top:12px"><b>Your selection</b>' + items.map(d => `<div class="row"><span style="flex:1">${cart[d.name]} × ${esc(d.name)}</span><span>${money(cart[d.name] * d.price)}</span></div>`).join('') +
     `<div class="row"><b style="flex:1">Total</b><b>${money(items.reduce((a, d) => a + cart[d.name] * d.price, 0))}</b></div><div class="row"><button class="pri" id="submit">Submit</button><button id="clear">Clear</button></div><div class="mut">Nothing is recorded until you press Submit. Use − to fix a mistake.</div></div>`;
@@ -395,7 +442,7 @@ function dashCard(a) {
   const d = a.dash, mx = Math.max(1, ...d.trend.map(t => t.total)), diff = d.sales - d.prevSales;
   let h = `<h2>Dashboard · ${month}</h2><div class="card"><div class="row"><div style="flex:1"><div class="mut">Sales</div><div class="big">${money(d.sales)}</div><div class="mut">${d.count} drink(s) · ${diff >= 0 ? '+' : '−'}${money(Math.abs(diff))} vs last month</div></div><div style="flex:1"><div class="mut">Unpaid (all months)</div><div class="big ${d.owedTotal > 0.005 ? 'warn' : ''}">${money(d.owedTotal)}</div></div></div>`;
   h += '<div class="mut" style="margin-top:8px">Last 6 months</div>' + d.trend.map(t => `<div class="row" style="flex-wrap:nowrap"><span class="mut" style="width:64px">${t.m}</span><div style="flex:1"><div style="background:var(--ac);height:10px;border-radius:5px;min-width:2px;width:${Math.round(t.total / mx * 100)}%"></div></div><span class="mut">${money(t.total)}</span></div>`).join('');
-  h += '<div class="mut" style="margin-top:8px">Top drinks this month</div>' + (d.top.length ? d.top.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span>${t.qty} · ${money(t.total)}</span></div>`).join('') : '<div class="mut">No sales yet</div>');
+  h += '<div class="mut" style="margin-top:8px">Top Items this month</div>' + (d.top.length ? d.top.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span>${t.qty} · ${money(t.total)}</span></div>`).join('') : '<div class="mut">No sales yet</div>');
   h += '<div class="mut" style="margin-top:8px">Who owes the most</div>' + (d.owes.length ? d.owes.map(t => `<div class="row"><span style="flex:1">${esc(t.name)}</span><span class="warn">${money(t.total)}</span></div>`).join('') : '<div class="mut">Everyone is settled</div>');
   return h + '</div>';
 }
@@ -403,9 +450,9 @@ function drawAdmin(a) {
   const lowList = a.drinks.filter(d => d.active && d.left <= a.low);
   let h = dashCard(a) + (lowList.length ? '<div class="card bill"><b class="warn">Low stock</b><div>' + lowList.map(d => esc(d.name) + (d.left <= 0 ? ' (out)' : ' (' + d.left + ' left)')).join(', ') + '</div></div>' : '') + '<h2>Stock</h2><div class="card scroll"><table><tr><th>Drink</th><th class="n">Price</th><th class="n">Topped up</th><th class="n">Sold</th><th class="n">Left</th><th>Top up</th><th></th></tr>' +
     a.drinks.map((d, i) => `<tr><td>${esc(d.name)}${d.active ? '' : ' <span class="mut">(retired)</span>'}</td><td class="n"><input id="pr${i}" type="number" step="0.05" min="0" value="${d.price}" style="width:75px"> <button data-pr="${i}">Set</button></td><td class="n">${d.topped}</td><td class="n">${d.sold}</td><td class="n ${d.left <= a.low ? 'warn' : ''}">${d.left}</td><td><input id="tu${i}" type="number" min="1" style="width:70px"> <button data-tu="${i}">Add</button></td><td><button data-rn="${i}">Rename</button> <button data-rt="${i}">${d.active ? 'Retire' : 'Restore'}</button></td></tr>`).join('') + '</table></div>' +
-    '<h2>Add a drink</h2><div class="card"><div class="row"><input id="dn" placeholder="Name (e.g. Coke)"><input id="dp" type="number" step="0.05" min="0" placeholder="Price" style="width:90px"><input id="dq" type="number" min="0" placeholder="Qty" style="width:80px"><button class="pri" id="addD">Add</button></div></div>' +
-    '<h2>Add a user</h2><div class="card admin-user-form"><div class="row admin-user-fields"><input id="un" placeholder="Name"><input id="ue" type="email" placeholder="Email (required)"><button class="pri" id="addU">Add</button></div><div class="mut">' + a.users.map((u, i) => `<div class="row"><span style="flex:1">${esc(u.name)} ${u.email ? `<span class="mut">${esc(u.email)}</span>` : `<input id="ue${i}" type="email" placeholder="Add email" style="width:180px"> <button data-se="${i}">Set</button>`}</span><button data-rp="${i}">Reset PIN</button> <button data-ru="${i}">Remove</button></div>`).join('') + '</div></div>' +
-    '<h2>Billing</h2><div class="row"><label>Month</label><input type="month" id="mo" value="' + month + '"></div><div class="card scroll"><table><tr><th>User</th><th class="n">Drinks</th><th class="n">Total</th><th class="n">Unpaid</th><th class="n">Reported</th><th class="n">Paid</th><th class="n">All months owed</th><th></th></tr>' +
+    '<h2>Add an item</h2><div class="card"><div class="row"><input id="dn" placeholder="Name (e.g. Coke)"><input id="dp" type="number" step="0.05" min="0" placeholder="Price" style="width:90px"><input id="dq" type="number" min="0" placeholder="Qty" style="width:80px"><button class="pri" id="addD">Add</button></div></div>' +
+    '<h2>Add a user</h2><div class="card admin-user-form"><div class="row admin-user-fields"><input id="un" placeholder="Name"><input id="ue" type="email" placeholder="Email (required)"><button class="pri" id="addU">Add</button></div><div class="user-list">' + a.users.map((u, i) => `<div class="user-row"><div class="user-info"><span class="user-name">${esc(u.name)}</span>${u.email ? `<span class="user-email">${esc(u.email)}</span>` : `<div class="row" style="margin:2px 0;flex-wrap:nowrap"><input id="ue${i}" type="email" placeholder="Add email" style="padding:4px 8px;min-height:32px;font-size:13px"><button data-se="${i}" style="padding:4px 8px;min-height:32px;font-size:13px">Set</button></div>`}</div><div class="user-actions"><button data-rp="${i}">Reset PIN</button><button data-ru="${i}">Remove</button></div></div>`).join('') + '</div></div>' + +
+    '<h2>Billing</h2><div class="row"><label>Month</label><input type="month" id="mo" value="' + month + '"></div><div class="card scroll"><table><tr><th>User</th><th class="n">Items</th><th class="n">Total</th><th class="n">Unpaid</th><th class="n">Reported</th><th class="n">Paid</th><th class="n">All months owed</th><th></th></tr>' +
     a.summary.map((u, i) => `<tr><td>${esc(u.name)}</td><td class="n">${u.count}</td><td class="n">${money(u.total)}</td><td class="n ${u.owed > 0 ? 'warn' : ''}">${money(u.owed)}</td><td class="n">${money(u.pending)}</td><td class="n">${money(u.paid)}</td><td class="n ${u.allOwed > 0.005 ? 'warn' : ''}">${money(u.allOwed)}</td><td>${(u.owed + u.pending) > 0 ? `<button data-cp="${i}">Mark month paid</button>` : ''} ${u.allOwed > 0.005 ? `<button data-ca="${i}">Mark all paid</button>` : ''}</td></tr>`).join('') +
     `<tr><th>All</th><th class="n">${a.summary.reduce((x, u) => x + u.count, 0)}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.total, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.owed, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.pending, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.paid, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.allOwed, 0))}</th><th></th></tr></table></div>` +
     '<div class="row"><button class="pri" id="sum">Create summary sheet</button><button id="snd">Email reminders now</button></div>' +
