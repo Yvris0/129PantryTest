@@ -62,7 +62,7 @@ function payPanel() {
   if (!showPay || !(S.owed > 0)) return '';
   return `<div class="card bill"><h2 style="margin-top:0">Pay ${money(S.owed)}</h2>` +
     (pay.qr ? `<img src="${pay.qr}" alt="Payment code" style="max-width:240px;width:100%;display:block;margin:8px 0">` : '') +
-    (pay.note ? `<p>${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(me)}</p>` +
+    (pay.note ? `<p style="white-space:pre-line">${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(me)}</p>` +
     '<div class="row"><button class="pri" id="paid">I\'ve paid</button><button id="later">Pay later</button></div></div>';
 }
 function drawLogin(email) {
@@ -106,7 +106,7 @@ function duePopup() {
   const months = Object.keys(S.byMonth).filter(k => k < S.month).sort().map(k => `<div class="mut">${k}: ${money(S.byMonth[k])}</div>`).join('');
   return `<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10"><div class="card" style="max-width:420px;width:100%;margin:0;max-height:90vh;overflow:auto"><h2 style="margin-top:0">Payment due</h2><div class="big warn">${money(S.prevOwed)}</div>${months}` +
     (pay.qr ? `<img src="${pay.qr}" alt="Payment code" style="max-width:240px;width:100%;display:block;margin:8px 0">` : '') +
-    (pay.note ? `<p>${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(S.name)}</p><div class="row"><button class="pri" id="duepaid">I've paid</button><button id="duelater">Remind me later</button></div></div></div>`;
+    (pay.note ? `<p style="white-space:pre-line">${esc(pay.note)}</p>` : '') + `<p class="mut">Reference: ${esc(S.name)}</p><div class="row"><button class="pri" id="duepaid">I've paid</button><button id="duelater">Remind me later</button></div></div></div>`;
 }
 function drawBuy() {
   const st = S.state;
@@ -158,6 +158,10 @@ function drawBuy() {
   if ($('undo')) $('undo').onclick = async () => { const r = await safe(run('undoLast', tok)); if (r) { S = r; showPay = false; drawBuy(); flash('Last submission removed'); } else loadBuy(); };
 }
 
+function payCard(a) {
+  const p = a.pay;
+  return `<h2>Payment details</h2><div class="card"><div class="row"><input id="pyn" placeholder="Payee name" value="${esc(p.name)}" style="flex:1"></div><div class="row"><input id="pyu" placeholder="Number (phone or account)" value="${esc(p.number)}" style="flex:1"></div><div class="row"><input id="pyx" placeholder="Extra note (optional)" value="${esc(p.note)}" style="flex:1"></div><div class="row"><button class="pri" id="paysave">Save</button></div><div class="mut">Shown in the payment pop-up and in reminders. Leave all three blank to use the default text in the code.</div></div>`;
+}
 function tgAdminCard(a) {
   let h = '<h2>Telegram</h2><div class="card">';
   if (!a.tgBot) h += '<div class="mut">Create a bot with @BotFather on Telegram, then paste its token here.</div><div class="row"><input id="tgtok" type="password" placeholder="Bot token" style="flex:1"><button class="pri" id="tgsave">Connect bot</button></div>';
@@ -201,7 +205,7 @@ function drawAdmin(a) {
     `<tr><th>All</th><th class="n">${a.summary.reduce((x, u) => x + u.count, 0)}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.total, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.owed, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.pending, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.paid, 0))}</th><th class="n">${money(a.summary.reduce((x, u) => x + u.allOwed, 0))}</th><th></th></tr></table></div>` +
     '<div class="row"><button class="pri" id="sum">Create summary sheet</button><button id="snd">Email reminders now</button></div>' +
     '<p class="mut">Reminders also go out automatically on the last day of each month.</p>' +
-    '<h2>Alert emails</h2><div class="card"><div class="row"><input id="ae" style="flex:1" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>' + tgAdminCard(a);
+    '<h2>Alert emails</h2><div class="card"><div class="row"><input id="ae" style="flex:1" placeholder="a@example.com, b@example.com (blank = script owner)" value="' + esc(a.alertEmails) + '"><button class="pri" id="saveAE">Save</button></div><div class="mut">Low-stock alerts and the month-end summary go to these addresses.</div></div>' + payCard(a) + tgAdminCard(a);
   $('adm').innerHTML = h;
   const done = async (p, m) => { await safe(p); const err = safe.err; if (!err && m) flash(m); await adminLoad(); if (err) flash(err.replace(/^Error:\s*/, ''), 10000); };
   document.querySelectorAll('[data-tu]').forEach(b => b.onclick = () => done(run('topUp', pin, a.drinks[b.dataset.tu].name, $('tu' + b.dataset.tu).value), 'Stock updated'));
@@ -213,6 +217,7 @@ function drawAdmin(a) {
   document.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const u = a.summary[b.dataset.cp]; if (confirm('Mark all of ' + u.name + "'s " + month + ' drinks as paid?')) done(run('confirmPaid', pin, u.name, month), 'Marked as paid'); });
   document.querySelectorAll('[data-se]').forEach(b => b.onclick = () => done(run('setEmail', pin, a.users[b.dataset.se].name, $('ue' + b.dataset.se).value), 'Email saved'));
   document.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { const u = a.users[b.dataset.rp]; if (confirm('Reset the PIN for ' + u.name + '? They will choose a new one at next sign-in.')) done(run('resetPin', pin, u.name), 'PIN reset'); });
+  if ($('paysave')) $('paysave').onclick = () => done(run('setPayment', pin, $('pyn').value, $('pyu').value, $('pyx').value), 'Payment details saved');
   if ($('tgsave')) $('tgsave').onclick = () => done(run('setTelegram', pin, $('tgtok').value), 'Telegram bot connected');
   if ($('tgrm')) $('tgrm').onclick = () => { if (confirm('Remove the Telegram bot? Users will fall back to email.')) done(run('setTelegram', pin, ''), 'Telegram bot removed'); };
   if ($('atgc')) $('atgc').onclick = async () => { const l = await safe(run('adminTgLink', pin)); if (l) { atgUrl = l.url; drawAdmin(a); pollAdminTg(a.adminTg); } };
