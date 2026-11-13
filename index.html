@@ -66,12 +66,13 @@ function payPanel() {
     '<div class="row"><button class="pri" id="paid">I\'ve paid</button><button id="later">Pay later</button></div></div>';
 }
 function drawLogin(email) {
-  $('buy').innerHTML = `<div class="card"><h2 style="margin-top:0">Sign in</h2><div class="row"><input id="em" type="email" placeholder="Email" value="${esc(email || '')}"></div><div class="row"><input id="pn" type="password" inputmode="numeric" maxlength="6" placeholder="PIN (4-6 digits)"></div><div class="row"><input id="nm" placeholder="Name (first time only)"></div><div class="row"><button class="pri" id="go">Sign in</button></div><p class="mut">First time? Add your name and choose a PIN. Forgot your PIN? Ask the admin to reset it.</p></div>`;
+  $('buy').innerHTML = `<div class="card"><h2 style="margin-top:0">Sign in</h2><div class="row"><input id="em" type="email" placeholder="Email" value="${esc(email || '')}"></div><div class="row"><input id="pn" type="password" inputmode="numeric" maxlength="6" placeholder="PIN (4-6 digits)"><button type="button" id="pnt">Show</button></div><div class="row"><input id="nm" placeholder="Name (first time only)"></div><div class="row"><button class="pri" id="go">Sign in</button></div><p class="mut">First time? Add your name and choose a PIN. Forgot your PIN? Ask the admin to reset it.</p></div>`;
   const go = async () => {
     const r = await tryRun('signIn', $('em').value.trim(), $('pn').value, $('nm').value);
     if (r.ok) { tok = r.v; try { localStorage.setItem('tok', tok); } catch (x) {} loadBuy(); }
   };
   $('go').onclick = go;
+  $('pnt').onclick = () => { const i = $('pn'), show = i.type === 'password'; i.type = show ? 'text' : 'password'; $('pnt').textContent = show ? 'Hide' : 'Show'; i.focus(); };
   $('pn').onkeydown = e => { if (e.key === 'Enter') go(); };
 }
 const sigOf = () => `${S.owed}|${S.pending}|${S.count}|${S.total}`;
